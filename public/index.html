@@ -369,17 +369,37 @@
         throw new Error(err.feil || `HTTP ${resp.status}`);
       }
 
-      const blob = await resp.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${yrke}-${valgtNiva}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      const data = await resp.json();
+      if (data.feil) throw new Error(data.feil);
 
-      visStatus(`✅ Ferdig! ZIP-filen er lastet ned med arbeidshefte (.docx) og presentasjon (.pptx) for «${yrke}» nivå ${valgtNiva}.`, 'ok');
+      // Last ned Word-fil
+      const docxBlob = new Blob(
+        [Uint8Array.from(atob(data.docx), c => c.charCodeAt(0))],
+        { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
+      );
+      const docxUrl = URL.createObjectURL(docxBlob);
+      const a1 = document.createElement('a');
+      a1.href = docxUrl;
+      a1.download = `${data.filnavn}-arbeidshefte-${data.niva}.docx`;
+      document.body.appendChild(a1); a1.click(); a1.remove();
+      URL.revokeObjectURL(docxUrl);
+
+      // Liten pause så nettleseren ikke blokkerer
+      await new Promise(r => setTimeout(r, 600));
+
+      // Last ned PowerPoint-fil
+      const pptxBlob = new Blob(
+        [Uint8Array.from(atob(data.pptx), c => c.charCodeAt(0))],
+        { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }
+      );
+      const pptxUrl = URL.createObjectURL(pptxBlob);
+      const a2 = document.createElement('a');
+      a2.href = pptxUrl;
+      a2.download = `${data.filnavn}-presentasjon-${data.niva}.pptx`;
+      document.body.appendChild(a2); a2.click(); a2.remove();
+      URL.revokeObjectURL(pptxUrl);
+
+      visStatus(`✅ Ferdig! To filer er lastet ned: arbeidshefte (.docx) og presentasjon (.pptx) for «${yrke}» nivå ${valgtNiva}.`, 'ok');
 
     } catch (e) {
       visStatus(`❌ Feil: ${e.message}`, 'error');
