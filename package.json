@@ -11,8 +11,6 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.21.0",
-    "archiver": "^7.0.1",
     "docx": "^9.5.1",
     "express": "^4.19.2",
     "pptxgenjs": "^3.12.0"
