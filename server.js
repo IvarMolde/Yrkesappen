@@ -4,7 +4,7 @@ const https = require('https');
 const {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   HeadingLevel, AlignmentType, BorderStyle, WidthType, ShadingType,
-  LevelFormat, PageNumber, TabStopType, TabStopPosition,
+  LevelFormat, TabStopType, TabStopPosition, PageNumber, Header, Footer,
 } = require('docx');
 const pptxgen = require('pptxgenjs');
 const fs = require('fs');
@@ -343,7 +343,7 @@ async function buildDocx(data, hjelpesprak, plassering) {
         },
       },
       headers: {
-        default: {
+        default: new Header({
           children: [new Paragraph({
             border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: C.primary, space: 1 } },
             tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
@@ -353,20 +353,20 @@ async function buildDocx(data, hjelpesprak, plassering) {
               new TextRun({ text: 'Molde voksenopplæringssenter', size: 18, color: C.textMid, font: 'Calibri' }),
             ],
           })],
-        },
+        }),
       },
       footers: {
-        default: {
+        default: new Footer({
           children: [new Paragraph({
             border: { top: { style: BorderStyle.SINGLE, size: 4, color: C.bgGray, space: 1 } },
             tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
             children: [
               new TextRun({ text: '© MBO – Molde voksenopplæringssenter', size: 18, color: C.textMid, font: 'Calibri' }),
-              new TextRun({ text: '\t', size: 18 }),
-              new TextRun({ children: ['Side ', new PageNumber()], size: 18, color: C.textMid, font: 'Calibri' }),
+              new TextRun({ text: '\tSide ', size: 18, color: C.textMid, font: 'Calibri' }),
+              new TextRun({ children: [PageNumber.CURRENT], size: 18, color: C.textMid, font: 'Calibri' }),
             ],
           })],
-        },
+        }),
       },
       children: [
         ...titleBlock,
