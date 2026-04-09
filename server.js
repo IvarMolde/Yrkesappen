@@ -1,6 +1,6 @@
 'use strict';
 const express = require('express');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const https = require('https');
 const {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   HeadingLevel, AlignmentType, BorderStyle, WidthType, ShadingType,
@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ─── Colours from DESIGN.md ───────────────────────────────────────────────────
@@ -26,12 +26,46 @@ const C = {
   white:     'FFFFFF',
 };
 
-// ─── Gemini helper ─────────────────────────────────────────────────────────────
-function getModel() {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new Error('GEMINI_API_KEY mangler i miljøvariabler.');
-  // gemini-2.0-flash: god balanse mellom kvalitet og kostnad
- return new GoogleGenerativeAI(key).getGenerativeModel({ model: 'gemini-2.5-flash-preview-04-17' });
+// ─── Gemini 2.5 Flash via direkte HTTP ────────────────────────────────────────
+function callGemini(prompt) {
+  return new Promise((resolve, reject) => {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return reject(new Error('GEMINI_API_KEY mangler i miljøvariabler.'));
+
+    const body = JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
+    });
+
+    const options = {
+      hostname: 'generativelanguage.googleapis.com',
+      path: `/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body)
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.error) return reject(new Error(parsed.error.message));
+          const text = parsed.candidates[0].content.parts[0].text;
+          resolve(text);
+        } catch (e) {
+          reject(new Error('Kunne ikke tolke svar fra Gemini: ' + data.slice(0, 200)));
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
 }
 
 // ─── Prompt ────────────────────────────────────────────────────────────────────
@@ -155,7 +189,6 @@ async function buildDocx(data, hjelpesprak, plassering) {
     });
   }
 
-  // Title block
   const titleBlock = [
     new Paragraph({
       shading: { fill: C.primary, type: ShadingType.CLEAR },
@@ -173,7 +206,6 @@ async function buildDocx(data, hjelpesprak, plassering) {
     new Paragraph({ spacing: { after: 240 }, children: [] }),
   ];
 
-  // Intro
   const introBlock = [
     ...sectionHeader('Innledning'),
     new Paragraph({
@@ -182,7 +214,6 @@ async function buildDocx(data, hjelpesprak, plassering) {
     }),
   ];
 
-  // Texts
   const teksterBlock = [
     ...sectionHeader('Yrkestekster'),
     ...tekster.flatMap(t => [
@@ -198,7 +229,6 @@ async function buildDocx(data, hjelpesprak, plassering) {
     ]),
   ];
 
-  // Word list table
   const colCount = showHelp && !ordlisteAtEnd ? 3 : 2;
   const colWidths = colCount === 3 ? [2700, 3500, 2800] : [3300, 5700];
 
@@ -217,17 +247,17 @@ async function buildDocx(data, hjelpesprak, plassering) {
 
   const ordRows = ordliste.map((o, i) => {
     const fill = i % 2 === 0 ? C.white : C.bgGray;
-    const makeCellData = (text, w, opts = {}) => new TableCell({
+    const makeCell = (text, w, opts = {}) => new TableCell({
       borders: allBorders, width: { size: w, type: WidthType.DXA },
       shading: { fill, type: ShadingType.CLEAR },
       margins: { top: 80, bottom: 80, left: 120, right: 120 },
       children: [new Paragraph({ children: [new TextRun({ text, size: 22, font: 'Calibri', ...opts })] })],
     });
     const cells = [
-      makeCellData(o.norsk, colWidths[0], { bold: true, color: C.secondary }),
-      makeCellData(o.forklaring, colWidths[1]),
+      makeCell(o.norsk, colWidths[0], { bold: true, color: C.secondary }),
+      makeCell(o.forklaring, colWidths[1]),
     ];
-    if (colCount === 3) cells.push(makeCellData(o.oversettelse || '', colWidths[2], { italics: true }));
+    if (colCount === 3) cells.push(makeCell(o.oversettelse || '', colWidths[2], { italics: true }));
     return new TableRow({ children: cells });
   });
 
@@ -237,7 +267,6 @@ async function buildDocx(data, hjelpesprak, plassering) {
     new Paragraph({ spacing: { after: 200 }, children: [] }),
   ];
 
-  // Tasks
   const oppgaverBlock = [
     ...sectionHeader('Oppgaver'),
     ...oppgaver.flatMap(o => {
@@ -271,7 +300,6 @@ async function buildDocx(data, hjelpesprak, plassering) {
     }),
   ];
 
-  // Optional help-language word list at end
   const extraOrdliste = ordlisteAtEnd ? [
     ...sectionHeader(`Ordliste – ${hjelpesprak}`),
     new Table({
@@ -363,7 +391,6 @@ async function buildPptx(data, yrke, niva) {
   pres.title = `${yrke} – Norsknivå ${niva}`;
   pres.author = 'Molde voksenopplæringssenter';
 
-  // Helpers
   const makeShadow = () => ({ type: 'outer', blur: 6, offset: 2, angle: 135, color: '000000', opacity: 0.12 });
 
   function darkSlide() {
@@ -477,17 +504,14 @@ app.post('/api/generer', async (req, res) => {
     const { yrke, niva, sprak, plassering } = req.body;
     if (!yrke || !niva) return res.status(400).json({ feil: 'Yrke og nivå er påkrevd.' });
 
-    const model = getModel();
-    const result = await model.generateContent(buildPrompt(yrke, niva, sprak, plassering));
-    let raw = result.response.text().trim();
-    // Strip markdown fences if present
-    raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
+    const raw = await callGemini(buildPrompt(yrke, niva, sprak, plassering));
+    const clean = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
 
     let data;
     try {
-      data = JSON.parse(raw);
+      data = JSON.parse(clean);
     } catch (e) {
-      console.error('JSON feil:', raw.slice(0, 400));
+      console.error('JSON feil:', clean.slice(0, 400));
       return res.status(500).json({ feil: 'Klarte ikke tolke svar fra AI. Prøv igjen.' });
     }
 
@@ -511,4 +535,4 @@ app.post('/api/generer', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Yrkesappen kjører på port ${PORT}`)); 
+app.listen(PORT, () => console.log(`Yrkesappen kjører på port ${PORT}`));
