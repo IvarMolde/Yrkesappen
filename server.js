@@ -57,7 +57,7 @@ function callGemini(prompt) {
           const text = parsed.candidates[0].content.parts[0].text;
           resolve(text);
         } catch (e) {
-          reject(new Error('Kunne ikke tolke svar fra Gemini: ' + data.slice(0, 200)));
+          reject(new Error('Kunne ikke tolke svar fra Gemini: ' + data.slice(0, 200))); 
         }
       });
     });
