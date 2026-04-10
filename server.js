@@ -69,7 +69,7 @@ function callGemini(prompt) {
 }
 
 // ─── Prompt ────────────────────────────────────────────────────────────────────
-function buildPrompt(yrke, niva, sprak, plassering) {
+function buildPrompt(yrke, niva, sprak, plassering, fokus) {
   const nivaMap = {
     A1: 'svært enkelt språk, korte setninger maks 40 ord per tekst, grunnleggende hverdagsord',
     A2: 'enkelt språk, korte avsnitt maks 70 ord per tekst, vanlige arbeidslivsord',
@@ -82,9 +82,14 @@ function buildPrompt(yrke, niva, sprak, plassering) {
         : 'samle alle oversettelser i ordlisten på slutten'}.`
     : 'Ingen hjelpespråk.';
 
+  const fokusInstruksjon = fokus
+    ? `\nSPESIELT FOKUS FRA LÆREREN: "${fokus}"\nTa hensyn til dette i alle tre fagtekster, i ordlisten og i oppgavene. Fagbegreper, situasjoner og eksempler skal reflektere dette fokuset.\n`
+    : '';
+
   return `Du er en erfaren norsklærer og fagpedagog. Lag et komplett arbeidshefte om yrket "${yrke}" på norsknivå ${niva} (${nivaMap[niva]}).
 
 ${hjelpeTekst}
+${fokusInstruksjon}
 
 VIKTIG: Svar KUN med gyldig JSON. Ingen markdown, ingen tekst utenfor JSON.
 
@@ -93,9 +98,18 @@ VIKTIG: Svar KUN med gyldig JSON. Ingen markdown, ingen tekst utenfor JSON.
   "niva": "${niva}",
   "intro": "2-3 setninger om yrket på ${niva}-nivå",
   "tekster": [
-    { "tittel": "Tittel 1", "innhold": "Tekst 1" },
-    { "tittel": "Tittel 2", "innhold": "Tekst 2" },
-    { "tittel": "Tittel 3", "innhold": "Tekst 3" }
+    {
+      "tittel": "Tekst 1 – [tema, f.eks. En vanlig arbeidsdag]",
+      "innhold": "Fagtekst 1 – handler om en konkret situasjon eller arbeidsdag i yrket"
+    },
+    {
+      "tittel": "Tekst 2 – [tema, f.eks. Utstyr og arbeidsplassen]",
+      "innhold": "Fagtekst 2 – handler om utstyr, verktøy, arbeidssted eller faglige metoder"
+    },
+    {
+      "tittel": "Tekst 3 – [tema, f.eks. Samarbeid og kommunikasjon]",
+      "innhold": "Fagtekst 3 – handler om menneskelige relasjoner, kommunikasjon eller HMS i yrket"
+    }
   ],
   "ordliste": [
     { "norsk": "fagord", "forklaring": "norsk forklaring"${sprak && sprak !== 'ingen' ? ', "oversettelse": "på ' + sprak + '"' : ''} }
@@ -104,10 +118,11 @@ VIKTIG: Svar KUN med gyldig JSON. Ingen markdown, ingen tekst utenfor JSON.
     {
       "nummer": 1,
       "type": "leseforståelse",
+      "tilknyttet_tekst": "Tekst 1",
       "tittel": "Oppgavetittel",
-      "instruksjon": "Les teksten og svar på spørsmålene.",
+      "instruksjon": "Les Tekst 1 og svar på spørsmålene.",
       "delopgaver": [
-        { "bokstav": "a", "tekst": "Spørsmål..." },
+        { "bokstav": "a", "tekst": "Spørsmål fra Tekst 1..." },
         { "bokstav": "b", "tekst": "..." },
         { "bokstav": "c", "tekst": "..." },
         { "bokstav": "d", "tekst": "..." },
@@ -124,14 +139,25 @@ VIKTIG: Svar KUN med gyldig JSON. Ingen markdown, ingen tekst utenfor JSON.
   }
 }
 
-KRAV TIL OPPGAVENE (10-13 stk.):
-- Leseforståelse: 3 oppgaver (spørsmål til tekstene)
-- Vokabular/ord: 2-3 oppgaver (ordforklaring, fyll inn riktig ord, koble ord og forklaring)
-- Grammatikk: 3-4 oppgaver knyttet til yrket (verb, setningsbygning V2, adjektiv, preposisjoner)
-- Muntlig/skriv: 1-2 oppgaver
+KRAV TIL DE TRE FAGTEKSTENE:
+- Tekst 1: En konkret hverdagssituasjon eller typisk arbeidsdag i yrket. Bruk gjerne dialog eller fortellende form.
+- Tekst 2: Faglig innhold om utstyr, verktøy, fagbegreper eller arbeidsmetoder i yrket.
+- Tekst 3: Fokus på samarbeid, kommunikasjon med kolleger/kunder, eller HMS og sikkerhet.
+- Tekstene skal være tydelig forskjellige fra hverandre i tema og form.
+- Hvert nye fagord som brukes i tekstene skal være i ordlisten.
+
+KRAV TIL OPPGAVENE (10-13 stk., fordelt på alle tre tekstene):
+- Leseforståelse Tekst 1: 1 oppgave med spørsmål direkte fra Tekst 1
+- Leseforståelse Tekst 2: 1 oppgave med spørsmål direkte fra Tekst 2
+- Leseforståelse Tekst 3: 1 oppgave med spørsmål direkte fra Tekst 3
+- Vokabular/ord: 2-3 oppgaver (ordforklaring, fyll inn riktig ord fra ordlisten, koble ord og forklaring)
+- Grammatikk: 3-4 oppgaver knyttet til yrket og tekstene (verb, setningsbygning V2, adjektiv, preposisjoner)
+- Muntlig/skriv: 1-2 oppgaver (skriv om deg selv i dette yrket, rollespill, beskriv en arbeidsdag)
 - Alle oppgaver har 5 delopgaver a-e
-- Ordlisten: 10-15 ord
-Lag faglig korrekt, pedagogisk og engasjerende innhold.`;
+- Feltet "tilknyttet_tekst" skal alltid fylles ut: "Tekst 1", "Tekst 2", "Tekst 3" eller "Generell"
+- Ordlisten: 10-15 ord hentet fra alle tre tekstene
+
+Lag faglig korrekt, pedagogisk og engasjerende innhold. Tekstene og oppgavene skal motivere eleven til å lese videre.`;
 }
 
 // ─── DOCX builder ──────────────────────────────────────────────────────────────
@@ -164,13 +190,19 @@ async function buildDocx(data, hjelpesprak, plassering) {
     ];
   }
 
-  function oppgaveHeader(nr, tittel, instruksjon) {
+  function oppgaveHeader(nr, tittel, instruksjon, tilknyttetTekst) {
+    const visTekst = tilknyttetTekst && tilknyttetTekst !== 'Generell';
     return [
       new Paragraph({
         spacing: { before: 300, after: 60 },
         shading: { fill: C.primary, type: ShadingType.CLEAR },
         children: [new TextRun({ text: `  Oppgave ${nr}  `, bold: true, size: 26, color: C.white, font: 'Calibri' })],
       }),
+      ...(visTekst ? [new Paragraph({
+        spacing: { before: 40, after: 40 },
+        shading: { fill: C.secondary, type: ShadingType.CLEAR },
+        children: [new TextRun({ text: `  📖 ${tilknyttetTekst}  `, size: 20, color: C.white, font: 'Calibri' })],
+      })] : []),
       new Paragraph({
         spacing: { before: 60, after: 60 },
         children: [new TextRun({ text: tittel, bold: true, size: 28, color: C.textDark, font: 'Calibri' })],
@@ -293,7 +325,7 @@ async function buildDocx(data, hjelpesprak, plassering) {
         });
       });
       return [
-        ...oppgaveHeader(o.nummer, o.tittel, o.instruksjon),
+        ...oppgaveHeader(o.nummer, o.tittel, o.instruksjon, o.tilknyttet_tekst),
         new Table({ width: { size: 9000, type: WidthType.DXA }, columnWidths: [800, 8200], rows: deloRows }),
         new Paragraph({ spacing: { after: 120 }, children: [] }),
       ];
@@ -501,10 +533,10 @@ async function buildPptx(data, yrke, niva) {
 // ─── API endpoint ──────────────────────────────────────────────────────────────
 app.post('/api/generer', async (req, res) => {
   try {
-    const { yrke, niva, sprak, plassering } = req.body;
+    const { yrke, niva, sprak, plassering, fokus } = req.body;
     if (!yrke || !niva) return res.status(400).json({ feil: 'Yrke og nivå er påkrevd.' });
 
-    const raw = await callGemini(buildPrompt(yrke, niva, sprak, plassering));
+    const raw = await callGemini(buildPrompt(yrke, niva, sprak, plassering, fokus));
     const clean = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
 
     let data;
