@@ -228,14 +228,91 @@
       padding: 1.5rem;
       border-top: 1px solid var(--bgGray);
     }
+
+    /* ── Login overlay ────────────────────────────────────── */
+    #loginOverlay {
+      position: fixed; inset: 0;
+      background: var(--primary);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000; padding: 1.5rem;
+    }
+    #loginOverlay.skjult { display: none; }
+    .login-boks {
+      background: var(--white); border-radius: 14px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.25);
+      padding: 2.5rem 2rem; width: 100%; max-width: 400px; text-align: center;
+    }
+    .login-logo {
+      width: 60px; height: 60px; background: var(--primary);
+      border-radius: 14px; display: inline-flex;
+      align-items: center; justify-content: center;
+      margin-bottom: 1.2rem; font-size: 1.9rem;
+    }
+    .login-boks h2 { font-size: 1.4rem; font-weight: 800; color: var(--primary); margin-bottom: .3rem; }
+    .login-boks p  { font-size: .9rem; color: var(--textMid); margin-bottom: 1.6rem; }
+    .login-boks label { display: block; text-align: left; font-size: .85rem; font-weight: 600; color: var(--textMid); margin-bottom: .4rem; }
+    .passord-wrapper { position: relative; margin-bottom: 1.2rem; }
+    .passord-wrapper input {
+      width: 100%; padding: .75rem 3rem .75rem 1rem;
+      font-size: 1rem; border: 2px solid var(--bgGray);
+      border-radius: 8px; background: var(--bgLight);
+      color: var(--textDark); outline: none;
+      transition: border-color .2s; font-family: inherit;
+    }
+    .passord-wrapper input:focus { border-color: var(--secondary); background: var(--white); }
+    .vis-passord {
+      position: absolute; right: .75rem; top: 50%;
+      transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      font-size: 1.1rem; color: var(--textMid); padding: 0; line-height: 1;
+    }
+    #loggInnBtn {
+      width: 100%; padding: .85rem; font-size: 1rem; font-weight: 700;
+      background: var(--primary); color: var(--white);
+      border: none; border-radius: 8px; cursor: pointer;
+      transition: background .2s; font-family: inherit;
+    }
+    #loggInnBtn:hover { background: var(--secondary); }
+    #loggInnFeil {
+      margin-top: .9rem; background: #f8d7da; color: #721c24;
+      border: 1px solid #f5c6cb; border-radius: 8px;
+      padding: .7rem 1rem; font-size: .88rem; display: none;
+    }
+    .login-footer { margin-top: 1.4rem; font-size: .78rem; color: var(--textMid); }
+    #loggUtBtn {
+      background: none; border: 1px solid rgba(255,255,255,.4);
+      color: rgba(255,255,255,.85); padding: .35rem .9rem;
+      border-radius: 6px; cursor: pointer; font-size: .82rem;
+      font-family: inherit; transition: all .2s; float: right; margin-top: .3rem;
+    }
+    #loggUtBtn:hover { background: rgba(255,255,255,.15); }
   </style>
 </head>
 <body>
+
+
+<div id="loginOverlay">
+  <div class="login-boks">
+    <div class="login-logo">🏢</div>
+    <h2>Yrkesappen</h2>
+    <p>Logg inn for å lage arbeidshefte og presentasjon</p>
+    <label for="passordInput">Passord</label>
+    <div class="passord-wrapper">
+      <input type="password" id="passordInput" placeholder="Skriv inn passord…"
+             autocomplete="current-password" onkeydown="if(event.key==='Enter') loggInn()" />
+      <button class="vis-passord" type="button" onclick="togglePassord()" title="Vis/skjul passord">👁</button>
+    </div>
+    <button id="loggInnBtn" onclick="loggInn()">Logg inn</button>
+    <div id="loggInnFeil">❌ Feil passord. Prøv igjen.</div>
+    <p class="login-footer">Molde voksenopplæringssenter – MBO</p>
+  </div>
+</div>
 
 <header>
   <div class="header-inner">
     <h1>Yrkesappen</h1>
     <h2>Molde voksenopplæringssenter hjelper deg til arbeid</h2>
+    <button id="loggUtBtn" onclick="loggUt()">Logg ut</button>
   </div>
   <div class="header-accent"></div>
 </header>
@@ -379,6 +456,7 @@
           sprak: sprak || 'ingen',
           plassering: sprak ? plassering : 'ingen',
           fokus: fokus || '',
+          passord: sessionStorage.getItem('yrkesappen_pw') || '',
         }),
       });
 
@@ -426,6 +504,69 @@
       btn.textContent = 'Generer hefte og presentasjon';
     }
   }
+
+  // ── Autentisering ──────────────────────────────────────────
+  const SESSION_KEY = 'yrkesappen_auth';
+
+  function sjekkInnlogging() {
+    if (sessionStorage.getItem(SESSION_KEY) === '1') {
+      document.getElementById('loginOverlay').classList.add('skjult');
+    } else {
+      document.getElementById('loginOverlay').classList.remove('skjult');
+      setTimeout(() => document.getElementById('passordInput').focus(), 100);
+    }
+  }
+
+  async function loggInn() {
+    const passord = document.getElementById('passordInput').value.trim();
+    const feilEl = document.getElementById('loggInnFeil');
+    const btn = document.getElementById('loggInnBtn');
+    if (!passord) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Sjekker…';
+    feilEl.style.display = 'none';
+
+    try {
+      const resp = await fetch('/api/logginn', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passord }),
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        sessionStorage.setItem(SESSION_KEY, '1');
+        sessionStorage.setItem('yrkesappen_pw', passord);
+        document.getElementById('loginOverlay').classList.add('skjult');
+        document.getElementById('passordInput').value = '';
+      } else {
+        feilEl.style.display = 'block';
+        document.getElementById('passordInput').value = '';
+        document.getElementById('passordInput').focus();
+      }
+    } catch {
+      feilEl.textContent = '❌ Nettverksfeil. Prøv igjen.';
+      feilEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Logg inn';
+    }
+  }
+
+  function loggUt() {
+    sessionStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem('yrkesappen_pw');
+    sjekkInnlogging();
+  }
+
+  function togglePassord() {
+    const inp = document.getElementById('passordInput');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  }
+
+  // Sjekk ved oppstart
+  sjekkInnlogging();
+
 </script>
 </body>
 </html>
