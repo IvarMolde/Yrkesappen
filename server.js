@@ -85,9 +85,11 @@ function buildPrompt(yrke, niva, sprak, plassering, fokus) {
   };
 
   const hjelpeTekst = sprak && sprak !== 'ingen'
-    ? `Hjelpespråk: ${sprak}. Plassering: ${plassering === 'tosidig'
-        ? 'oversettelse i parentes etter norsk term, f.eks. lege (doctor)'
-        : 'samle alle oversettelser i ordlisten på slutten'}.`
+    ? `HJELPESPRÅK: ${sprak}.
+KRITISK REGEL: ALL oversettelse i "oversettelse"-feltet MÅ være på ${sprak}. Ikke engelsk, ikke norsk, ikke et annet språk – KUN ${sprak}. Dette gjelder ALLE ord i ordlisten uten unntak. Hvis du er usikker på et ord på ${sprak}, bruk likevel ditt beste forsøk på ${sprak}.
+Plassering: ${plassering === 'tosidig'
+        ? `oversettelse i parentes etter norsk term direkte i teksten – oversettelsen MÅ være på ${sprak}`
+        : `samle alle oversettelser i ordlisten på slutten – alle oversettelser MÅ være på ${sprak}`}.`
     : 'Ingen hjelpespråk.';
 
   const fokusInstruksjon = fokus
@@ -256,7 +258,7 @@ JSON-struktur:
     }
   ],
   "ordliste": [
-    { "norsk": "fagord", "forklaring": "norsk forklaring på ${niva}-nivå"${sprak && sprak !== 'ingen' ? ', "oversettelse": "på ' + sprak + '"' : ''} }
+    { "norsk": "fagord", "forklaring": "norsk forklaring på ${niva}-nivå"${sprak && sprak !== 'ingen' ? `, "oversettelse": "oversettelse på ${sprak} – KUN ${sprak}, ikke noe annet språk"` : ''} }
   ],
   "pptx": {
     "nokkelord": ["8 viktige fagord for yrket"],
@@ -275,7 +277,7 @@ STRENGE KRAV:
 - Alle oppgaver har nøyaktig 5 delopgaver (a–e), der a–c er litt lettere enn d–e
 - Ordlisten: 12–16 ord hentet fra alle tre tekstene
 - Legg til totalt 10–12 seksjoner i "seksjoner"-arrayet (3 tekster + 7–9 oppgaver)
-- Du kan legge til én ekstra grammatikkoppgave etter Tekst 1 eller Tekst 2 om det er pedagogisk nyttig`;
+- Du kan legge til én ekstra grammatikkoppgave etter Tekst 1 eller Tekst 2 om det er pedagogisk nyttig${sprak && sprak !== 'ingen' ? `\n- OVERSETTELSE: Hvert "oversettelse"-felt MÅ inneholde ${sprak}. Ikke engelsk. Ikke norsk. Ikke noe annet språk. KUN ${sprak}. Kontroller hvert felt før du svarer.` : ''}`;
 }
 
 // ─── DOCX builder ──────────────────────────────────────────────────────────────
