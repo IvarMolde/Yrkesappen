@@ -71,11 +71,19 @@ function callGemini(prompt) {
 // ─── Prompt ────────────────────────────────────────────────────────────────────
 function buildPrompt(yrke, niva, sprak, plassering, fokus) {
   const nivaMap = {
-    A1: 'svært enkelt språk, korte setninger maks 40 ord per tekst, grunnleggende hverdagsord',
-    A2: 'enkelt språk, korte avsnitt maks 70 ord per tekst, vanlige arbeidslivsord',
-    B1: 'moderat komplekst, ca. 120 ord per tekst, fagterminologi forklares i teksten',
-    B2: 'mer komplekst, ca. 180 ord per tekst, fagterminologi brukes naturlig',
+    A1: 'svært enkelt språk, maks 40–60 ord per tekst, kun presens, korte SVO-setninger, kun kjente hverdagsord',
+    A2: 'enkelt språk, 70–100 ord per tekst, presens og preteritum, enkel inversion, enkle fagord i kontekst',
+    B1: 'moderat komplekst, 100–140 ord per tekst, presens/preteritum/perfektum, modalverb, leddsetninger, fagterminologi forklares',
+    B2: 'avansert, 150–200 ord per tekst, alle tider, passiv, fagterminologi naturlig, sammensatte setninger',
   };
+
+  const grammatikkMap = {
+    A1: 'presens av vanlige verb (er, jobber, har), grunnleggende SVO-ordstilling, tall og daglige fraser',
+    A2: 'preteritum av sterke og svake verb, inversion/V2-regelen ("Om morgenen jobber hun"), enkle bindeord (og, men, fordi, når), enkel adjektivbøyning',
+    B1: 'perfektum (har jobbet), modalverb + infinitiv (må/kan/skal/bør), leddsetninger med riktig ordstilling, adjektivbøyning i alle former',
+    B2: 'passiv (blir + perfektum partisipp), kondisjonalis (ville + infinitiv), relativsetninger (som, der, hvilket), sammensatte substantiv',
+  };
+
   const hjelpeTekst = sprak && sprak !== 'ingen'
     ? `Hjelpespråk: ${sprak}. Plassering: ${plassering === 'tosidig'
         ? 'oversettelse i parentes etter norsk term, f.eks. lege (doctor)'
@@ -86,49 +94,169 @@ function buildPrompt(yrke, niva, sprak, plassering, fokus) {
     ? `\nSPESIELT FOKUS FRA LÆREREN: "${fokus}"\nTa hensyn til dette i alle tre fagtekster, i ordlisten og i oppgavene. Fagbegreper, situasjoner og eksempler skal reflektere dette fokuset.\n`
     : '';
 
-  return `Du er en erfaren norsklærer og fagpedagog. Lag et komplett arbeidshefte om yrket "${yrke}" på norsknivå ${niva} (${nivaMap[niva]}).
+  return `Du er en erfaren norsklærer og fagpedagog med dyp kjennskap til CEFR-rammeverket. Lag et komplett arbeidshefte om yrket "${yrke}" på norsknivå ${niva}.
+
+CEFR-NIVÅ ${niva}: ${nivaMap[niva]}
+GRAMMATIKKFOKUS FOR ${niva}: ${grammatikkMap[niva]}
 
 ${hjelpeTekst}
 ${fokusInstruksjon}
 
 VIKTIG: Svar KUN med gyldig JSON. Ingen markdown, ingen tekst utenfor JSON.
 
+Heftet skal ha denne strukturen der tekster og oppgaver er FLETTET SAMMEN:
+1. Tekst 1 → deretter oppgaver til Tekst 1
+2. Tekst 2 → deretter oppgaver til Tekst 2
+3. Tekst 3 → deretter oppgaver til Tekst 3
+4. Avsluttende oppgaver (vokabular, grammatikk, skriv/muntlig)
+
+JSON-struktur:
 {
   "yrke": "${yrke}",
   "niva": "${niva}",
-  "intro": "2-3 setninger om yrket på ${niva}-nivå",
-  "tekster": [
+  "intro": "2-3 setninger om yrket tilpasset ${niva}-nivå",
+  "seksjoner": [
     {
-      "tittel": "Tekst 1 – [tema, f.eks. En vanlig arbeidsdag]",
-      "innhold": "Fagtekst 1 – handler om en konkret situasjon eller arbeidsdag i yrket"
-    },
-    {
-      "tittel": "Tekst 2 – [tema, f.eks. Utstyr og arbeidsplassen]",
-      "innhold": "Fagtekst 2 – handler om utstyr, verktøy, arbeidssted eller faglige metoder"
-    },
-    {
-      "tittel": "Tekst 3 – [tema, f.eks. Samarbeid og kommunikasjon]",
-      "innhold": "Fagtekst 3 – handler om menneskelige relasjoner, kommunikasjon eller HMS i yrket"
-    }
-  ],
-  "ordliste": [
-    { "norsk": "fagord", "forklaring": "norsk forklaring"${sprak && sprak !== 'ingen' ? ', "oversettelse": "på ' + sprak + '"' : ''} }
-  ],
-  "oppgaver": [
-    {
+      "type": "tekst",
       "nummer": 1,
-      "type": "leseforståelse",
+      "tittel": "Tekst 1 – [konkret tema, f.eks. En vanlig arbeidsdag]",
+      "innhold": "Fagtekst 1 på ${niva}-nivå (${nivaMap[niva]}). Handle om en konkret hverdagssituasjon. Bruk gjerne dialog eller fortellende form. Teksten skal være engasjerende og autentisk."
+    },
+    {
+      "type": "oppgave",
+      "nummer": 1,
       "tilknyttet_tekst": "Tekst 1",
-      "tittel": "Oppgavetittel",
+      "oppgavetype": "leseforståelse",
+      "tittel": "Leseforståelse – Tekst 1",
       "instruksjon": "Les Tekst 1 og svar på spørsmålene.",
       "delopgaver": [
-        { "bokstav": "a", "tekst": "Spørsmål fra Tekst 1..." },
+        { "bokstav": "a", "tekst": "Spørsmål direkte fra Tekst 1..." },
+        { "bokstav": "b", "tekst": "..." },
+        { "bokstav": "c", "tekst": "..." },
+        { "bokstav": "d", "tekst": "..." },
+        { "bokstav": "e", "tekst": "..." }
+      ]
+    },
+    {
+      "type": "oppgave",
+      "nummer": 2,
+      "tilknyttet_tekst": "Tekst 1",
+      "oppgavetype": "grammatikk",
+      "tittel": "Grammatikk – [${grammatikkMap[niva].split(',')[0]}]",
+      "instruksjon": "Grammatikkoppgave med eksempler fra Tekst 1.",
+      "delopgaver": [
+        { "bokstav": "a", "tekst": "Grammatikkoppgave..." },
+        { "bokstav": "b", "tekst": "..." },
+        { "bokstav": "c", "tekst": "..." },
+        { "bokstav": "d", "tekst": "..." },
+        { "bokstav": "e", "tekst": "..." }
+      ]
+    },
+    {
+      "type": "tekst",
+      "nummer": 2,
+      "tittel": "Tekst 2 – [tema: utstyr, verktøy eller faglige metoder]",
+      "innhold": "Fagtekst 2 på ${niva}-nivå om utstyr, verktøy, fagbegreper eller arbeidsmetoder i yrket. Litt mer krevende enn Tekst 1."
+    },
+    {
+      "type": "oppgave",
+      "nummer": 3,
+      "tilknyttet_tekst": "Tekst 2",
+      "oppgavetype": "leseforståelse",
+      "tittel": "Leseforståelse – Tekst 2",
+      "instruksjon": "Les Tekst 2 og svar på spørsmålene.",
+      "delopgaver": [
+        { "bokstav": "a", "tekst": "..." },
+        { "bokstav": "b", "tekst": "..." },
+        { "bokstav": "c", "tekst": "..." },
+        { "bokstav": "d", "tekst": "..." },
+        { "bokstav": "e", "tekst": "..." }
+      ]
+    },
+    {
+      "type": "oppgave",
+      "nummer": 4,
+      "tilknyttet_tekst": "Tekst 2",
+      "oppgavetype": "vokabular",
+      "tittel": "Ord og uttrykk fra Tekst 2",
+      "instruksjon": "Vokabularoppgave basert på ord fra Tekst 2.",
+      "delopgaver": [
+        { "bokstav": "a", "tekst": "..." },
+        { "bokstav": "b", "tekst": "..." },
+        { "bokstav": "c", "tekst": "..." },
+        { "bokstav": "d", "tekst": "..." },
+        { "bokstav": "e", "tekst": "..." }
+      ]
+    },
+    {
+      "type": "tekst",
+      "nummer": 3,
+      "tittel": "Tekst 3 – [tema: samarbeid, kommunikasjon eller HMS]",
+      "innhold": "Fagtekst 3 på ${niva}-nivå om samarbeid, kommunikasjon eller HMS. Den mest krevende av de tre tekstene."
+    },
+    {
+      "type": "oppgave",
+      "nummer": 5,
+      "tilknyttet_tekst": "Tekst 3",
+      "oppgavetype": "leseforståelse",
+      "tittel": "Leseforståelse – Tekst 3",
+      "instruksjon": "Les Tekst 3 og svar på spørsmålene.",
+      "delopgaver": [
+        { "bokstav": "a", "tekst": "..." },
+        { "bokstav": "b", "tekst": "..." },
+        { "bokstav": "c", "tekst": "..." },
+        { "bokstav": "d", "tekst": "..." },
+        { "bokstav": "e", "tekst": "..." }
+      ]
+    },
+    {
+      "type": "oppgave",
+      "nummer": 6,
+      "tilknyttet_tekst": "Generell",
+      "oppgavetype": "grammatikk",
+      "tittel": "Grammatikk – [${grammatikkMap[niva].split(',')[1] || grammatikkMap[niva].split(',')[0]}]",
+      "instruksjon": "Grammatikkoppgave med eksempler fra alle tekstene.",
+      "delopgaver": [
+        { "bokstav": "a", "tekst": "..." },
+        { "bokstav": "b", "tekst": "..." },
+        { "bokstav": "c", "tekst": "..." },
+        { "bokstav": "d", "tekst": "..." },
+        { "bokstav": "e", "tekst": "..." }
+      ]
+    },
+    {
+      "type": "oppgave",
+      "nummer": 7,
+      "tilknyttet_tekst": "Generell",
+      "oppgavetype": "vokabular",
+      "tittel": "Ord fra alle tekstene",
+      "instruksjon": "Vokabularoppgave med ord fra alle tre tekstene.",
+      "delopgaver": [
+        { "bokstav": "a", "tekst": "..." },
+        { "bokstav": "b", "tekst": "..." },
+        { "bokstav": "c", "tekst": "..." },
+        { "bokstav": "d", "tekst": "..." },
+        { "bokstav": "e", "tekst": "..." }
+      ]
+    },
+    {
+      "type": "oppgave",
+      "nummer": 8,
+      "tilknyttet_tekst": "Generell",
+      "oppgavetype": "skriv_muntlig",
+      "tittel": "Skriv og snakk",
+      "instruksjon": "Produksjonsoppgave – skriv og/eller snakk om yrket.",
+      "delopgaver": [
+        { "bokstav": "a", "tekst": "..." },
         { "bokstav": "b", "tekst": "..." },
         { "bokstav": "c", "tekst": "..." },
         { "bokstav": "d", "tekst": "..." },
         { "bokstav": "e", "tekst": "..." }
       ]
     }
+  ],
+  "ordliste": [
+    { "norsk": "fagord", "forklaring": "norsk forklaring på ${niva}-nivå"${sprak && sprak !== 'ingen' ? ', "oversettelse": "på ' + sprak + '"' : ''} }
   ],
   "pptx": {
     "nokkelord": ["8 viktige fagord for yrket"],
@@ -139,30 +267,20 @@ VIKTIG: Svar KUN med gyldig JSON. Ingen markdown, ingen tekst utenfor JSON.
   }
 }
 
-KRAV TIL DE TRE FAGTEKSTENE:
-- Tekst 1: En konkret hverdagssituasjon eller typisk arbeidsdag i yrket. Bruk gjerne dialog eller fortellende form.
-- Tekst 2: Faglig innhold om utstyr, verktøy, fagbegreper eller arbeidsmetoder i yrket.
-- Tekst 3: Fokus på samarbeid, kommunikasjon med kolleger/kunder, eller HMS og sikkerhet.
-- Tekstene skal være tydelig forskjellige fra hverandre i tema og form.
-- Hvert nye fagord som brukes i tekstene skal være i ordlisten.
-
-KRAV TIL OPPGAVENE (10-13 stk., fordelt på alle tre tekstene):
-- Leseforståelse Tekst 1: 1 oppgave med spørsmål direkte fra Tekst 1
-- Leseforståelse Tekst 2: 1 oppgave med spørsmål direkte fra Tekst 2
-- Leseforståelse Tekst 3: 1 oppgave med spørsmål direkte fra Tekst 3
-- Vokabular/ord: 2-3 oppgaver (ordforklaring, fyll inn riktig ord fra ordlisten, koble ord og forklaring)
-- Grammatikk: 3-4 oppgaver knyttet til yrket og tekstene (verb, setningsbygning V2, adjektiv, preposisjoner)
-- Muntlig/skriv: 1-2 oppgaver (skriv om deg selv i dette yrket, rollespill, beskriv en arbeidsdag)
-- Alle oppgaver har 5 delopgaver a-e
-- Feltet "tilknyttet_tekst" skal alltid fylles ut: "Tekst 1", "Tekst 2", "Tekst 3" eller "Generell"
-- Ordlisten: 10-15 ord hentet fra alle tre tekstene
-
-Lag faglig korrekt, pedagogisk og engasjerende innhold. Tekstene og oppgavene skal motivere eleven til å lese videre.`;
+STRENGE KRAV:
+- Fagtekstene MÅ være i den lengden som er angitt for ${niva} – ikke kortere!
+- Tekstene skal bli litt mer krevende fra Tekst 1 til Tekst 3
+- Grammatikkoppgavene MÅ bruke eksempler direkte fra fagtekstene
+- Grammatikkfokus MÅ stemme med ${niva}: ${grammatikkMap[niva]}
+- Alle oppgaver har nøyaktig 5 delopgaver (a–e), der a–c er litt lettere enn d–e
+- Ordlisten: 12–16 ord hentet fra alle tre tekstene
+- Legg til totalt 10–12 seksjoner i "seksjoner"-arrayet (3 tekster + 7–9 oppgaver)
+- Du kan legge til én ekstra grammatikkoppgave etter Tekst 1 eller Tekst 2 om det er pedagogisk nyttig`;
 }
 
 // ─── DOCX builder ──────────────────────────────────────────────────────────────
 async function buildDocx(data, hjelpesprak, plassering) {
-  const { yrke, niva, intro, tekster, ordliste, oppgaver } = data;
+  const { yrke, niva, intro, seksjoner, ordliste } = data;
   const showHelp = hjelpesprak && hjelpesprak !== 'ingen';
   const ordlisteAtEnd = showHelp && plassering === 'slutt';
 
@@ -190,7 +308,29 @@ async function buildDocx(data, hjelpesprak, plassering) {
     ];
   }
 
-  function oppgaveHeader(nr, tittel, instruksjon, tilknyttetTekst) {
+  function tekstHeader(nr, tittel) {
+    return [
+      new Paragraph({
+        spacing: { before: 360, after: 0 },
+        shading: { fill: C.primary, type: ShadingType.CLEAR },
+        children: [new TextRun({ text: `  📄 Tekst ${nr}  `, bold: true, size: 24, color: C.white, font: 'Calibri' })],
+      }),
+      new Paragraph({
+        heading: HeadingLevel.HEADING_2,
+        spacing: { before: 80, after: 80 },
+        children: [new TextRun({ text: tittel, bold: true, size: 32, color: C.secondary, font: 'Calibri' })],
+      }),
+    ];
+  }
+
+  function oppgaveHeader(nr, tittel, instruksjon, tilknyttetTekst, oppgavetype) {
+    const typeIkon = {
+      leseforståelse: '📖',
+      grammatikk: '✏️',
+      vokabular: '🔤',
+      skriv_muntlig: '💬',
+    }[oppgavetype] || '📝';
+
     const visTekst = tilknyttetTekst && tilknyttetTekst !== 'Generell';
     return [
       new Paragraph({
@@ -201,7 +341,7 @@ async function buildDocx(data, hjelpesprak, plassering) {
       ...(visTekst ? [new Paragraph({
         spacing: { before: 40, after: 40 },
         shading: { fill: C.secondary, type: ShadingType.CLEAR },
-        children: [new TextRun({ text: `  📖 ${tilknyttetTekst}  `, size: 20, color: C.white, font: 'Calibri' })],
+        children: [new TextRun({ text: `  ${typeIkon} ${tilknyttetTekst}  `, size: 20, color: C.white, font: 'Calibri' })],
       })] : []),
       new Paragraph({
         spacing: { before: 60, after: 60 },
@@ -221,6 +361,7 @@ async function buildDocx(data, hjelpesprak, plassering) {
     });
   }
 
+  // Title block
   const titleBlock = [
     new Paragraph({
       shading: { fill: C.primary, type: ShadingType.CLEAR },
@@ -238,6 +379,7 @@ async function buildDocx(data, hjelpesprak, plassering) {
     new Paragraph({ spacing: { after: 240 }, children: [] }),
   ];
 
+  // Intro
   const introBlock = [
     ...sectionHeader('Innledning'),
     new Paragraph({
@@ -246,21 +388,53 @@ async function buildDocx(data, hjelpesprak, plassering) {
     }),
   ];
 
-  const teksterBlock = [
-    ...sectionHeader('Yrkestekster'),
-    ...tekster.flatMap(t => [
-      new Paragraph({
-        heading: HeadingLevel.HEADING_2,
-        spacing: { before: 240, after: 80 },
-        children: [new TextRun({ text: t.tittel, bold: true, size: 32, color: C.secondary, font: 'Calibri' })],
-      }),
-      new Paragraph({
-        spacing: { after: 200 },
-        children: [new TextRun({ text: t.innhold, size: 24, font: 'Calibri' })],
-      }),
-    ]),
-  ];
+  // Build seksjoner (interleaved texts and tasks)
+  const seksjonerBlock = [];
+  let firstText = true;
 
+  for (const seksjon of seksjoner) {
+    if (seksjon.type === 'tekst') {
+      if (firstText) {
+        seksjonerBlock.push(...sectionHeader('Fagtekster og oppgaver'));
+        firstText = false;
+      }
+      seksjonerBlock.push(...tekstHeader(seksjon.nummer, seksjon.tittel));
+      seksjonerBlock.push(new Paragraph({
+        spacing: { after: 240 },
+        children: [new TextRun({ text: seksjon.innhold, size: 24, font: 'Calibri' })],
+      }));
+    } else if (seksjon.type === 'oppgave') {
+      const deloRows = seksjon.delopgaver.map((d, i) => {
+        const fill = i % 2 === 0 ? C.white : C.bgGray;
+        return new TableRow({
+          children: [
+            new TableCell({
+              borders: noBorders, width: { size: 800, type: WidthType.DXA },
+              shading: { fill, type: ShadingType.CLEAR },
+              margins: { top: 80, bottom: 80, left: 120, right: 60 },
+              children: [new Paragraph({ children: [new TextRun({ text: `${d.bokstav})`, bold: true, size: 24, color: C.primary, font: 'Calibri' })] })],
+            }),
+            new TableCell({
+              borders: noBorders, width: { size: 8200, type: WidthType.DXA },
+              shading: { fill, type: ShadingType.CLEAR },
+              margins: { top: 80, bottom: 80, left: 60, right: 120 },
+              children: [
+                new Paragraph({ children: [new TextRun({ text: d.tekst, size: 24, font: 'Calibri' })] }),
+                svarLinje(),
+              ],
+            }),
+          ],
+        });
+      });
+      seksjonerBlock.push(
+        ...oppgaveHeader(seksjon.nummer, seksjon.tittel, seksjon.instruksjon, seksjon.tilknyttet_tekst, seksjon.oppgavetype),
+        new Table({ width: { size: 9000, type: WidthType.DXA }, columnWidths: [800, 8200], rows: deloRows }),
+        new Paragraph({ spacing: { after: 120 }, children: [] }),
+      );
+    }
+  }
+
+  // Word list table
   const colCount = showHelp && !ordlisteAtEnd ? 3 : 2;
   const colWidths = colCount === 3 ? [2700, 3500, 2800] : [3300, 5700];
 
@@ -299,39 +473,7 @@ async function buildDocx(data, hjelpesprak, plassering) {
     new Paragraph({ spacing: { after: 200 }, children: [] }),
   ];
 
-  const oppgaverBlock = [
-    ...sectionHeader('Oppgaver'),
-    ...oppgaver.flatMap(o => {
-      const deloRows = o.delopgaver.map((d, i) => {
-        const fill = i % 2 === 0 ? C.white : C.bgGray;
-        return new TableRow({
-          children: [
-            new TableCell({
-              borders: noBorders, width: { size: 800, type: WidthType.DXA },
-              shading: { fill, type: ShadingType.CLEAR },
-              margins: { top: 80, bottom: 80, left: 120, right: 60 },
-              children: [new Paragraph({ children: [new TextRun({ text: `${d.bokstav})`, bold: true, size: 24, color: C.primary, font: 'Calibri' })] })],
-            }),
-            new TableCell({
-              borders: noBorders, width: { size: 8200, type: WidthType.DXA },
-              shading: { fill, type: ShadingType.CLEAR },
-              margins: { top: 80, bottom: 80, left: 60, right: 120 },
-              children: [
-                new Paragraph({ children: [new TextRun({ text: d.tekst, size: 24, font: 'Calibri' })] }),
-                svarLinje(),
-              ],
-            }),
-          ],
-        });
-      });
-      return [
-        ...oppgaveHeader(o.nummer, o.tittel, o.instruksjon, o.tilknyttet_tekst),
-        new Table({ width: { size: 9000, type: WidthType.DXA }, columnWidths: [800, 8200], rows: deloRows }),
-        new Paragraph({ spacing: { after: 120 }, children: [] }),
-      ];
-    }),
-  ];
-
+  // Optional help-language word list at end
   const extraOrdliste = ordlisteAtEnd ? [
     ...sectionHeader(`Ordliste – ${hjelpesprak}`),
     new Table({
@@ -403,9 +545,8 @@ async function buildDocx(data, hjelpesprak, plassering) {
       children: [
         ...titleBlock,
         ...introBlock,
-        ...teksterBlock,
+        ...seksjonerBlock,
         ...ordlisteBlock,
-        ...oppgaverBlock,
         ...extraOrdliste,
       ],
     }],
