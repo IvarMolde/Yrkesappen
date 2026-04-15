@@ -508,22 +508,41 @@ async function buildDocx(data, hjelpesprak, plassering, bildeBuf) {
         new TextRun({ text: '   |   Molde voksenopplæringssenter', size: 24, color: C.bgGray, font: 'Calibri' }),
       ],
     }),
-    // Yrkesbildet under tittelboksen
-    ...(bildeBuf ? [
-      new Paragraph({
+    // Yrkesbildet under tittelboksen – beholder original aspektforhold
+    ...(bildeBuf ? (() => {
+      // A4 innholdsbredde i EMU: 11906 - 2*1134 = 9638 DXA → i piksler ved 96dpi ≈ 643px
+      // Vi setter max bredde til 620px og beregner høyden proporsjonalt
+      // PptxGenJS/docx bruker piksler. Vi leser bildebredde/-høyde fra JPEG-headeren.
+      let origW = 1280, origH = 853; // Pexels "large2x" typisk 1280×853 (3:2)
+      try {
+        // Les JPEG-dimensjoner fra SOF-marker (enkel parser)
+        for (let i = 0; i < bildeBuf.length - 8; i++) {
+          if (bildeBuf[i] === 0xFF && (bildeBuf[i+1] === 0xC0 || bildeBuf[i+1] === 0xC2)) {
+            origH = (bildeBuf[i+5] << 8) | bildeBuf[i+6];
+            origW = (bildeBuf[i+7] << 8) | bildeBuf[i+8];
+            break;
+          }
+        }
+      } catch(e) { /* bruk standardverdier */ }
+
+      const maxW = 620; // maks bredde i Word (px ved 96dpi ≈ 16.5cm)
+      const maxH = 280; // maks høyde for å unngå for stor forside
+      // Skaler ned proporsjonalt, aldri opp
+      const skala = Math.min(maxW / origW, maxH / origH, 1);
+      const visW = Math.round(origW * skala);
+      const visH = Math.round(origH * skala);
+
+      return [new Paragraph({
         spacing: { before: 0, after: 0 },
         children: [
           new ImageRun({
             data: bildeBuf,
-            transformation: {
-              width: 620,   // full bredde i Word (ca 16 cm)
-              height: 220,  // panoramaformat – passer godt som forsidebilde
-            },
+            transformation: { width: visW, height: visH },
             type: 'jpg',
           }),
         ],
-      }),
-    ] : []),
+      })];
+    })() : []),
     new Paragraph({ spacing: { after: 200 }, children: [] }),
   ];
 
@@ -794,13 +813,22 @@ async function buildPptx(data, yrke, niva, hjelpesprak, fokus, bildeBuf) {
     const s = pres.addSlide();
 
     if (bildeData) {
-      // Bilde som full bakgrunn
+      // Bruk 'contain' med sentrering for å unngå strekking.
+      // Bildet skaleres ned til å passe innenfor sliden uten å strekkes.
+      // Bakgrunnsfargen fyller resten.
+      s.background = { color: C.primary };
+
+      // Beregn riktig posisjon og størrelse for å sentrere bildet med contain
+      // Slide: 10" × 5.625", Pexels large2x: typisk 3:2 (1.5)
+      // Vi ønsker bildet å dekke hele sliden med cover (croppe, ikke strekke)
+      // PptxGenJS sin sizing.cover gjør nettopp dette korrekt
       s.addImage({
         data: bildeData,
         x: 0, y: 0, w: 10, h: 5.625,
         sizing: { type: 'cover', w: 10, h: 5.625 },
       });
-      // Mørk overlay for lesbarhet (50% opacity teal)
+
+      // Mørk overlay for lesbarhet
       s.addShape(pres.shapes.RECTANGLE, {
         x: 0, y: 0, w: 10, h: 5.625,
         fill: { color: C.primary, transparency: 35 },
@@ -864,8 +892,10 @@ async function buildPptx(data, yrke, niva, hjelpesprak, fokus, bildeBuf) {
       valign: 'top', wrap: true, shrinkText: true, margin: 8,
     });
 
-    // Right panel: bilde med teal overlay, eller forbokstav som fallback
+    // Right panel: bilde med cover-cropping (aldri strekk), eller forbokstav som fallback
     if (bildeData) {
+      // cover-modus: bildet croppes til å fylle boksen uten strekking
+      // PptxGenJS sin sizing.cover skalerer bildet opp/ned og klipper kanter
       s.addImage({
         data: bildeData,
         x: 6.3, y: 1.1, w: 3.45, h: 4.3,
@@ -877,7 +907,7 @@ async function buildPptx(data, yrke, niva, hjelpesprak, fokus, bildeBuf) {
         fill: { color: C.primary, transparency: 60 },
         line: { color: C.primary, transparency: 60 },
       });
-      // Yrkestittel over bildet
+      // Yrkestittel nederst i bildepanelet
       s.addShape(pres.shapes.RECTANGLE, {
         x: 6.3, y: 4.7, w: 3.45, h: 0.7,
         fill: { color: C.primary, transparency: 15 },
