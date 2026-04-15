@@ -280,91 +280,133 @@ STRENGE KRAV:
 - Du kan legge til én ekstra grammatikkoppgave etter Tekst 1 eller Tekst 2 om det er pedagogisk nyttig${sprak && sprak !== 'ingen' ? `\n- OVERSETTELSE: Hvert "oversettelse"-felt MÅ inneholde ${sprak}. Ikke engelsk. Ikke norsk. Ikke noe annet språk. KUN ${sprak}. Kontroller hvert felt før du svarer.` : ''}`;
 }
 
-// ─── Bildehenting fra Pexels ──────────────────────────────────────────────────
-// Pexels API: gratis, høy kvalitet, krever PEXELS_API_KEY miljøvariabel
-const yrkesMap = {
-  sykepleier: 'nurse hospital', sjukepleier: 'nurse hospital',
-  lege: 'doctor medical', tannlege: 'dentist clinic',
-  hjelpepleier: 'caregiver elderly care', helsefagarbeider: 'healthcare worker',
-  ambulansearbeider: 'ambulance paramedic', fysioterapeut: 'physiotherapy',
-  kokk: 'chef kitchen cooking', baker: 'baker bakery bread',
-  servitør: 'waiter restaurant serving', kantinearbeider: 'cafeteria food service',
-  renholder: 'cleaning professional', vaktmester: 'maintenance worker building',
-  elektriker: 'electrician electrical work', rørlegger: 'plumber pipes',
-  tømmermann: 'carpenter woodwork', murer: 'bricklayer construction',
-  maler: 'painter decorator wall', sveiser: 'welder welding',
-  mekaniker: 'mechanic car repair', bilfagarbeider: 'car mechanic workshop',
-  lastebilsjåfør: 'truck driver highway', bussjåfør: 'bus driver transport',
-  butikkmedarbeider: 'retail store cashier', lagermedarbeider: 'warehouse logistics',
-  barnehageassistent: 'kindergarten children playing', barnehagelærer: 'kindergarten teacher',
-  lærer: 'teacher classroom school', assistent: 'office assistant work',
-  kontoransatt: 'office work desk computer', resepsjonist: 'receptionist hotel front desk',
-  frisør: 'hairdresser salon hair', hudpleier: 'beauty therapist spa',
-  sikkerhetsansatt: 'security guard', vekter: 'security guard uniform',
-  gartner: 'gardener landscape garden', anleggsarbeider: 'construction worker site',
-  fisker: 'fisherman fishing boat sea', havbruksarbeider: 'fish farm aquaculture',
-  industriarbeider: 'factory worker industrial', produksjonsoperatør: 'factory production line',
-  flymekaniker: 'aircraft mechanic airplane', pilot: 'pilot airplane cockpit',
-  brannmann: 'firefighter fire station', politibetjent: 'police officer',
-  ingeniør: 'engineer technical work', arkitekt: 'architect blueprint',
-  revisor: 'accountant finance office', advokat: 'lawyer office',
-  journalist: 'journalist reporter', fotograf: 'photographer camera',
-  tolk: 'interpreter translator meeting', sosionom: 'social worker community',
-};
+// ─── Bildehenting fra Pexels med Gemini-oversettelse ─────────────────────────
 
-function getSearchTerm(yrke) {
-  const lower = yrke.toLowerCase().trim();
-  if (yrkesMap[lower]) return yrkesMap[lower];
-  for (const [norsk, engelsk] of Object.entries(yrkesMap)) {
-    if (lower.includes(norsk) || norsk.includes(lower)) return engelsk;
-  }
-  return `${yrke} professional worker`;
+async function oversettYrkeTilEngelsk(yrke) {
+  // Bruk Gemini til å oversette yrket til beste engelske søkeord for Pexels
+  return new Promise((resolve) => {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return resolve(`${yrke} professional worker`);
+
+    const prompt = `Oversett dette norske yrket til 2-3 engelske søkeord som passer for et bildebilde-søk på Pexels.com. Svar KUN med søkeordene, ingen annen tekst. Eksempel: "sykepleier" → "nurse hospital". Yrke: "${yrke}"`;
+
+    const body = JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 30 }
+    });
+
+    const options = {
+      hostname: 'generativelanguage.googleapis.com',
+      path: `/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+    };
+
+    const https = require('https');
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          const tekst = parsed.candidates[0].content.parts[0].text.trim();
+          console.log(`Oversatt "${yrke}" → "${tekst}"`);
+          resolve(tekst || `${yrke} professional worker`);
+        } catch (e) {
+          console.error('Oversettelse feilet:', e.message);
+          resolve(`${yrke} professional worker`);
+        }
+      });
+    });
+    req.on('error', () => resolve(`${yrke} professional worker`));
+    req.write(body);
+    req.end();
+  });
 }
 
 async function hentBildeBuf(yrke) {
-  const apiKey = process.env.PEXELS_API_KEY;
-  if (!apiKey) {
+  const pexelsKey = process.env.PEXELS_API_KEY;
+  if (!pexelsKey) {
     console.log('PEXELS_API_KEY ikke satt – hopper over bilde');
     return null;
   }
 
+  // Oversett yrket til engelsk søkeord
+  const engelskSokeord = await oversettYrkeTilEngelsk(yrke);
+  const sokeord = encodeURIComponent(engelskSokeord);
+
+  console.log(`Henter bilde fra Pexels: "${engelskSokeord}"`);
+
   return new Promise((resolve) => {
-    const sokeord = encodeURIComponent(getSearchTerm(yrke));
+    const https = require('https');
+
     const options = {
       hostname: 'api.pexels.com',
       path: `/v1/search?query=${sokeord}&per_page=5&orientation=landscape`,
-      headers: { Authorization: apiKey },
+      method: 'GET',
+      headers: {
+        'Authorization': pexelsKey,
+        'User-Agent': 'YrkesappenMBO/1.0',
+      },
     };
 
-    const https = require('https');
-    https.get(options, (res) => {
+    const req = https.request(options, (res) => {
       let raw = '';
       res.on('data', c => raw += c);
       res.on('end', () => {
         try {
+          console.log('Pexels status:', res.statusCode);
+          if (res.statusCode !== 200) {
+            console.error('Pexels feil:', raw.slice(0, 200));
+            return resolve(null);
+          }
+
           const json = JSON.parse(raw);
           const photos = json.photos || [];
+          console.log(`Pexels fant ${photos.length} bilder`);
+
           if (!photos.length) return resolve(null);
 
-          // Velg et tilfeldig bilde blant de 5 første for variasjon
+          // Velg tilfeldig blant første 5
           const photo = photos[Math.floor(Math.random() * photos.length)];
-          const imgUrl = photo.src.large; // 1280px bred, god kvalitet
+          const imgUrl = photo.src.large2x || photo.src.large || photo.src.original;
+          console.log('Laster ned bilde:', imgUrl.substring(0, 80) + '...');
 
-          // Last ned selve bildefilen
+          // Last ned bildefilen
           https.get(imgUrl, (imgRes) => {
             const chunks = [];
             imgRes.on('data', c => chunks.push(c));
-            imgRes.on('end', () => resolve(Buffer.concat(chunks)));
-            imgRes.on('error', () => resolve(null));
-          }).on('error', () => resolve(null));
+            imgRes.on('end', () => {
+              const buf = Buffer.concat(chunks);
+              console.log(`Bilde lastet ned: ${Math.round(buf.length / 1024)} KB`);
+              resolve(buf);
+            });
+            imgRes.on('error', (e) => {
+              console.error('Nedlasting feilet:', e.message);
+              resolve(null);
+            });
+          }).on('error', (e) => {
+            console.error('HTTP feil ved bildnedlasting:', e.message);
+            resolve(null);
+          });
 
         } catch (e) {
-          console.error('Pexels parse feil:', e.message);
+          console.error('Pexels parse feil:', e.message, raw.slice(0, 100));
           resolve(null);
         }
       });
-      res.on('error', () => resolve(null));
-    }).on('error', () => resolve(null));
+      res.on('error', (e) => {
+        console.error('Pexels response feil:', e.message);
+        resolve(null);
+      });
+    });
+
+    req.on('error', (e) => {
+      console.error('Pexels request feil:', e.message);
+      resolve(null);
+    });
+
+    req.end();
   });
 }
 
