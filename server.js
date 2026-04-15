@@ -4,7 +4,7 @@ const https = require('https');
 const {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   HeadingLevel, AlignmentType, BorderStyle, WidthType, ShadingType,
-  LevelFormat, TabStopType, TabStopPosition, PageNumber, Header, Footer,
+  LevelFormat, TabStopType, TabStopPosition, PageNumber, Header, Footer, ImageRun,
 } = require('docx');
 const pptxgen = require('pptxgenjs');
 const fs = require('fs');
@@ -280,8 +280,96 @@ STRENGE KRAV:
 - Du kan legge til én ekstra grammatikkoppgave etter Tekst 1 eller Tekst 2 om det er pedagogisk nyttig${sprak && sprak !== 'ingen' ? `\n- OVERSETTELSE: Hvert "oversettelse"-felt MÅ inneholde ${sprak}. Ikke engelsk. Ikke norsk. Ikke noe annet språk. KUN ${sprak}. Kontroller hvert felt før du svarer.` : ''}`;
 }
 
-// ─── DOCX builder ──────────────────────────────────────────────────────────────
-async function buildDocx(data, hjelpesprak, plassering) {
+// ─── Bildehenting fra Pexels ──────────────────────────────────────────────────
+// Pexels API: gratis, høy kvalitet, krever PEXELS_API_KEY miljøvariabel
+const yrkesMap = {
+  sykepleier: 'nurse hospital', sjukepleier: 'nurse hospital',
+  lege: 'doctor medical', tannlege: 'dentist clinic',
+  hjelpepleier: 'caregiver elderly care', helsefagarbeider: 'healthcare worker',
+  ambulansearbeider: 'ambulance paramedic', fysioterapeut: 'physiotherapy',
+  kokk: 'chef kitchen cooking', baker: 'baker bakery bread',
+  servitør: 'waiter restaurant serving', kantinearbeider: 'cafeteria food service',
+  renholder: 'cleaning professional', vaktmester: 'maintenance worker building',
+  elektriker: 'electrician electrical work', rørlegger: 'plumber pipes',
+  tømmermann: 'carpenter woodwork', murer: 'bricklayer construction',
+  maler: 'painter decorator wall', sveiser: 'welder welding',
+  mekaniker: 'mechanic car repair', bilfagarbeider: 'car mechanic workshop',
+  lastebilsjåfør: 'truck driver highway', bussjåfør: 'bus driver transport',
+  butikkmedarbeider: 'retail store cashier', lagermedarbeider: 'warehouse logistics',
+  barnehageassistent: 'kindergarten children playing', barnehagelærer: 'kindergarten teacher',
+  lærer: 'teacher classroom school', assistent: 'office assistant work',
+  kontoransatt: 'office work desk computer', resepsjonist: 'receptionist hotel front desk',
+  frisør: 'hairdresser salon hair', hudpleier: 'beauty therapist spa',
+  sikkerhetsansatt: 'security guard', vekter: 'security guard uniform',
+  gartner: 'gardener landscape garden', anleggsarbeider: 'construction worker site',
+  fisker: 'fisherman fishing boat sea', havbruksarbeider: 'fish farm aquaculture',
+  industriarbeider: 'factory worker industrial', produksjonsoperatør: 'factory production line',
+  flymekaniker: 'aircraft mechanic airplane', pilot: 'pilot airplane cockpit',
+  brannmann: 'firefighter fire station', politibetjent: 'police officer',
+  ingeniør: 'engineer technical work', arkitekt: 'architect blueprint',
+  revisor: 'accountant finance office', advokat: 'lawyer office',
+  journalist: 'journalist reporter', fotograf: 'photographer camera',
+  tolk: 'interpreter translator meeting', sosionom: 'social worker community',
+};
+
+function getSearchTerm(yrke) {
+  const lower = yrke.toLowerCase().trim();
+  if (yrkesMap[lower]) return yrkesMap[lower];
+  for (const [norsk, engelsk] of Object.entries(yrkesMap)) {
+    if (lower.includes(norsk) || norsk.includes(lower)) return engelsk;
+  }
+  return `${yrke} professional worker`;
+}
+
+async function hentBildeBuf(yrke) {
+  const apiKey = process.env.PEXELS_API_KEY;
+  if (!apiKey) {
+    console.log('PEXELS_API_KEY ikke satt – hopper over bilde');
+    return null;
+  }
+
+  return new Promise((resolve) => {
+    const sokeord = encodeURIComponent(getSearchTerm(yrke));
+    const options = {
+      hostname: 'api.pexels.com',
+      path: `/v1/search?query=${sokeord}&per_page=5&orientation=landscape`,
+      headers: { Authorization: apiKey },
+    };
+
+    const https = require('https');
+    https.get(options, (res) => {
+      let raw = '';
+      res.on('data', c => raw += c);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(raw);
+          const photos = json.photos || [];
+          if (!photos.length) return resolve(null);
+
+          // Velg et tilfeldig bilde blant de 5 første for variasjon
+          const photo = photos[Math.floor(Math.random() * photos.length)];
+          const imgUrl = photo.src.large; // 1280px bred, god kvalitet
+
+          // Last ned selve bildefilen
+          https.get(imgUrl, (imgRes) => {
+            const chunks = [];
+            imgRes.on('data', c => chunks.push(c));
+            imgRes.on('end', () => resolve(Buffer.concat(chunks)));
+            imgRes.on('error', () => resolve(null));
+          }).on('error', () => resolve(null));
+
+        } catch (e) {
+          console.error('Pexels parse feil:', e.message);
+          resolve(null);
+        }
+      });
+      res.on('error', () => resolve(null));
+    }).on('error', () => resolve(null));
+  });
+}
+
+
+async function buildDocx(data, hjelpesprak, plassering, bildeBuf) {
   const { yrke, niva, intro, seksjoner, ordliste } = data;
   const showHelp = hjelpesprak && hjelpesprak !== 'ingen';
   const ordlisteAtEnd = showHelp && plassering === 'slutt';
@@ -378,7 +466,23 @@ async function buildDocx(data, hjelpesprak, plassering) {
         new TextRun({ text: '   |   Molde voksenopplæringssenter', size: 24, color: C.bgGray, font: 'Calibri' }),
       ],
     }),
-    new Paragraph({ spacing: { after: 240 }, children: [] }),
+    // Yrkesbildet under tittelboksen
+    ...(bildeBuf ? [
+      new Paragraph({
+        spacing: { before: 0, after: 0 },
+        children: [
+          new ImageRun({
+            data: bildeBuf,
+            transformation: {
+              width: 620,   // full bredde i Word (ca 16 cm)
+              height: 220,  // panoramaformat – passer godt som forsidebilde
+            },
+            type: 'jpg',
+          }),
+        ],
+      }),
+    ] : []),
+    new Paragraph({ spacing: { after: 200 }, children: [] }),
   ];
 
   // Intro
@@ -558,7 +662,7 @@ async function buildDocx(data, hjelpesprak, plassering) {
 }
 
 // ─── PPTX builder ──────────────────────────────────────────────────────────────
-async function buildPptx(data, yrke, niva, hjelpesprak, fokus) {
+async function buildPptx(data, yrke, niva, hjelpesprak, fokus, bildeBuf) {
   const { nokkelord, hms, egenskaper, arbeidsoppgaver, utdanning } = data.pptx;
   const seksjoner = data.seksjoner || [];
   const ordliste = data.ordliste || [];
@@ -638,27 +742,60 @@ async function buildPptx(data, yrke, niva, hjelpesprak, fokus) {
     });
   }
 
-  // ── Slide 1 – Tittel ────────────────────────────────────────────────────────
+  // ── Konverter bildebuffer til base64 for PptxGenJS ──────────────────────────
+  const bildeData = bildeBuf
+    ? `image/jpeg;base64,${bildeBuf.toString('base64')}`
+    : null;
+
+  // ── Slide 1 – Tittel med bilde som bakgrunn ──────────────────────────────────
   {
-    const s = darkSlide();
+    const s = pres.addSlide();
+
+    if (bildeData) {
+      // Bilde som full bakgrunn
+      s.addImage({
+        data: bildeData,
+        x: 0, y: 0, w: 10, h: 5.625,
+        sizing: { type: 'cover', w: 10, h: 5.625 },
+      });
+      // Mørk overlay for lesbarhet (50% opacity teal)
+      s.addShape(pres.shapes.RECTANGLE, {
+        x: 0, y: 0, w: 10, h: 5.625,
+        fill: { color: C.primary, transparency: 35 },
+        line: { color: C.primary, transparency: 35 },
+      });
+    } else {
+      s.background = { color: C.primary };
+    }
+
+    // Gull-bannere
+    s.addShape(pres.shapes.RECTANGLE, { x: 0, y: 0, w: 10, h: 0.2, fill: { color: C.accent }, line: { color: C.accent } });
+    s.addShape(pres.shapes.RECTANGLE, { x: 0, y: 5.425, w: 10, h: 0.2, fill: { color: C.accent }, line: { color: C.accent } });
+
+    // Tittelblokk med halvtransparent bakgrunn
+    s.addShape(pres.shapes.RECTANGLE, {
+      x: 0.5, y: 1.2, w: 9, h: 2.5,
+      fill: { color: '000000', transparency: 45 },
+      line: { color: '000000', transparency: 45 },
+    });
     s.addText(yrke.toUpperCase(), {
-      x: 0.5, y: 1.3, w: 9, h: 1.6,
+      x: 0.5, y: 1.3, w: 9, h: 1.5,
       fontSize: 44, bold: true, color: C.white, fontFace: 'Calibri',
       align: 'center', valign: 'middle', wrap: true, shrinkText: true, margin: 8,
     });
     s.addText(`Norsknivå ${niva}`, {
-      x: 0.5, y: 3.0, w: 9, h: 0.55,
-      fontSize: 22, color: C.accent, fontFace: 'Calibri',
+      x: 0.5, y: 2.85, w: 9, h: 0.5,
+      fontSize: 20, color: C.accent, fontFace: 'Calibri',
       align: 'center', valign: 'middle', margin: 0,
     });
     s.addText('Molde voksenopplæringssenter – MBO', {
-      x: 0.5, y: 3.6, w: 9, h: 0.45,
-      fontSize: 14, color: C.bgGray, fontFace: 'Calibri',
+      x: 0.5, y: 3.55, w: 9, h: 0.4,
+      fontSize: 13, color: C.bgGray, fontFace: 'Calibri',
       align: 'center', valign: 'middle', margin: 0,
     });
     if (hasFokus) {
       s.addText(`Fokus: ${fokus}`, {
-        x: 1.5, y: 4.2, w: 7, h: 0.55,
+        x: 1.5, y: 4.1, w: 7, h: 0.5,
         fontSize: 13, italic: true, color: C.accent, fontFace: 'Calibri',
         align: 'center', valign: 'middle', wrap: true, shrinkText: true, margin: 4,
       });
@@ -681,24 +818,49 @@ async function buildPptx(data, yrke, niva, hjelpesprak, fokus) {
       },
     }));
     s.addText(items, {
-      x: 0.25, y: 1.1, w: 6.2, h: 4.3,
+      x: 0.25, y: 1.1, w: 5.8, h: 4.3,
       valign: 'top', wrap: true, shrinkText: true, margin: 8,
     });
-    // Right: large initial letter box
-    s.addShape(pres.shapes.RECTANGLE, {
-      x: 7.0, y: 1.1, w: 2.7, h: 4.3,
-      fill: { color: C.primary }, line: { color: C.primary }, shadow: makeShadow(),
-    });
-    s.addText(yrke.charAt(0).toUpperCase(), {
-      x: 7.0, y: 1.1, w: 2.7, h: 3.0,
-      fontSize: 110, bold: true, color: C.white, fontFace: 'Calibri',
-      align: 'center', valign: 'middle', margin: 0,
-    });
-    s.addText(yrke, {
-      x: 7.05, y: 4.1, w: 2.6, h: 0.7,
-      fontSize: 13, bold: true, color: C.accent, fontFace: 'Calibri',
-      align: 'center', valign: 'middle', wrap: true, shrinkText: true, margin: 4,
-    });
+
+    // Right panel: bilde med teal overlay, eller forbokstav som fallback
+    if (bildeData) {
+      s.addImage({
+        data: bildeData,
+        x: 6.3, y: 1.1, w: 3.45, h: 4.3,
+        sizing: { type: 'cover', w: 3.45, h: 4.3 },
+      });
+      // Lett teal overlay
+      s.addShape(pres.shapes.RECTANGLE, {
+        x: 6.3, y: 1.1, w: 3.45, h: 4.3,
+        fill: { color: C.primary, transparency: 60 },
+        line: { color: C.primary, transparency: 60 },
+      });
+      // Yrkestittel over bildet
+      s.addShape(pres.shapes.RECTANGLE, {
+        x: 6.3, y: 4.7, w: 3.45, h: 0.7,
+        fill: { color: C.primary, transparency: 15 },
+        line: { color: C.primary, transparency: 15 },
+      });
+      safeText(s, yrke, 6.35, 4.72, 3.35, 0.65, {
+        bold: true, color: C.white, fontSize: 15,
+        align: 'center', valign: 'middle', margin: 4,
+      });
+    } else {
+      // Fallback uten bilde
+      s.addShape(pres.shapes.RECTANGLE, {
+        x: 6.3, y: 1.1, w: 3.45, h: 4.3,
+        fill: { color: C.primary }, line: { color: C.primary }, shadow: makeShadow(),
+      });
+      s.addText(yrke.charAt(0).toUpperCase(), {
+        x: 6.3, y: 1.1, w: 3.45, h: 3.0,
+        fontSize: 110, bold: true, color: C.white, fontFace: 'Calibri',
+        align: 'center', valign: 'middle', margin: 0,
+      });
+      safeText(s, yrke, 6.35, 4.1, 3.35, 0.7, {
+        bold: true, color: C.accent, fontSize: 14,
+        align: 'center', valign: 'middle', margin: 4,
+      });
+    }
   }
 
   // ── Slide 3 – Viktige ord (med valgfritt hjelpespråk) ───────────────────────
@@ -1041,9 +1203,12 @@ app.post('/api/generer', async (req, res) => {
       return res.status(500).json({ feil: 'Klarte ikke tolke svar fra AI. Prøv igjen.' });
     }
 
+    // Hent bilde fra Unsplash parallelt med dokumentbygging
+    const bildeBuf = await hentBildeBuf(yrke);
+
     const [docxBuf, pptxBuf] = await Promise.all([
-      buildDocx(data, sprak, plassering),
-      buildPptx(data, yrke, niva, sprak, fokus),
+      buildDocx(data, sprak, plassering, bildeBuf),
+      buildPptx(data, yrke, niva, sprak, fokus, bildeBuf),
     ]);
 
     const safeName = yrke.replace(/[^a-zA-ZæøåÆØÅ0-9\-]/g, '_');
