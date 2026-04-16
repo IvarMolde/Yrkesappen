@@ -278,26 +278,40 @@ STRENGE KRAV:
 
 // ─── Bildehenting fra Pixabay ─────────────────────────────────────────────────
 
-async function oversettYrkeTilEngelsk(yrke) {
+// ─── Bildehenting fra Pixabay ─────────────────────────────────────────────────
+
+async function lagSokestrategier(yrke) {
+  // Ber Gemini om FLERE søkealternativer, rangert fra mest til minst spesifikt.
+  // Dette løser problemet med sjeldne yrker som «begravelsesagent».
   return new Promise((resolve) => {
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return resolve(`${yrke} professional worker`);
+    if (!apiKey) return resolve([`${yrke} worker`, `${yrke} professional`]);
 
-    const prompt = `Translate this Norwegian job title to 2-3 English keywords suitable for an image search on Pixabay. Reply with ONLY the keywords, nothing else. Example: "sykepleier" -> "nurse hospital". Job title: "${yrke}"`;
+    const prompt = `You are helping find relevant photos for a Norwegian job title on Pixabay.
+Job title: "${yrke}"
+
+Give me 4 different English search queries for Pixabay, from most to least specific.
+Each query should be 1-3 words that describe what this worker LOOKS LIKE or DOES at work.
+
+Rules:
+- Query 1: Most specific (e.g. "funeral director coffin" for begravelsesagent)
+- Query 2: Specific activity (e.g. "funeral service ceremony")
+- Query 3: Broader workplace setting (e.g. "mortician funeral home")
+- Query 4: General fallback (e.g. "professional service worker")
+
+Reply with ONLY a JSON array of 4 strings, nothing else.
+Example: ["nurse patient hospital", "medical care nursing", "healthcare professional", "medical worker"]`;
 
     const body = JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 20 },
+      generationConfig: { temperature: 0.2, maxOutputTokens: 100 },
     });
 
     const options = {
       hostname: 'generativelanguage.googleapis.com',
       path: `/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body),
-      },
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
     };
 
     const req = https.request(options, (res) => {
@@ -306,17 +320,55 @@ async function oversettYrkeTilEngelsk(yrke) {
       res.on('end', () => {
         try {
           const parsed = JSON.parse(data);
-          const tekst = parsed.candidates[0].content.parts[0].text.trim();
-          console.log(`Oversatt "${yrke}" → "${tekst}"`);
-          resolve(tekst || `${yrke} professional worker`);
+          let tekst = parsed.candidates[0].content.parts[0].text.trim();
+          // Strip markdown fences if present
+          tekst = tekst.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
+          const strategier = JSON.parse(tekst);
+          if (Array.isArray(strategier) && strategier.length > 0) {
+            console.log(`Søkestrategier for "${yrke}":`, strategier);
+            resolve(strategier);
+          } else {
+            resolve([`${yrke} professional`, `${yrke} worker`, 'professional workplace']);
+          }
         } catch (e) {
-          console.error('Oversettelse feilet:', e.message);
-          resolve(`${yrke} professional worker`);
+          console.error('Søkestrategi-parsing feilet:', e.message);
+          resolve([`${yrke} professional`, `${yrke} worker`, 'professional workplace']);
         }
       });
     });
-    req.on('error', () => resolve(`${yrke} professional worker`));
+    req.on('error', () => resolve([`${yrke} professional`, `${yrke} worker`, 'professional workplace']));
     req.write(body);
+    req.end();
+  });
+}
+
+function pixabaySOk(apiKey, sokeord, medKategori) {
+  // Returnerer Promise med Pixabay-treff for ett søkeord
+  return new Promise((resolve) => {
+    const q = encodeURIComponent(sokeord);
+    const kategori = medKategori ? '&category=people' : '';
+    const path = `/api/?key=${apiKey}&q=${q}&image_type=photo&orientation=horizontal${kategori}&per_page=10&safesearch=true&min_width=1280&editors_choice=false`;
+
+    const options = {
+      hostname: 'pixabay.com',
+      path,
+      method: 'GET',
+      headers: { 'User-Agent': 'YrkesappenMBO/1.0' },
+    };
+
+    const req = https.request(options, (res) => {
+      let raw = '';
+      res.on('data', c => raw += c);
+      res.on('end', () => {
+        try {
+          if (res.statusCode !== 200) return resolve([]);
+          const json = JSON.parse(raw);
+          resolve(json.hits || []);
+        } catch (e) { resolve([]); }
+      });
+      res.on('error', () => resolve([]));
+    });
+    req.on('error', () => resolve([]));
     req.end();
   });
 }
@@ -333,14 +385,8 @@ function lastNedBildeUrl(imgUrl, kreditt, resolve) {
       console.log(`Bilde lastet ned: ${Math.round(buf.length / 1024)} KB`);
       resolve(buf.length > 5000 ? { buf, kreditt } : null);
     });
-    imgRes.on('error', (e) => {
-      console.error('Nedlasting feilet:', e.message);
-      resolve(null);
-    });
-  }).on('error', (e) => {
-    console.error('HTTP feil:', e.message);
-    resolve(null);
-  });
+    imgRes.on('error', () => resolve(null));
+  }).on('error', () => resolve(null));
 }
 
 async function hentBildeBuf(yrke) {
@@ -350,90 +396,41 @@ async function hentBildeBuf(yrke) {
     return null;
   }
 
-  const engelskSokeord = await oversettYrkeTilEngelsk(yrke);
-  const sokeord = encodeURIComponent(engelskSokeord);
-  console.log(`Henter bilde fra Pixabay: "${engelskSokeord}"`);
+  // Hent rangerte søkestrategier fra Gemini
+  const strategier = await lagSokestrategier(yrke);
 
-  return new Promise((resolve) => {
-    // Søk med category=people for yrkesbilder med folk
-    const path1 = `/api/?key=${apiKey}&q=${sokeord}&image_type=photo&orientation=horizontal&category=people&per_page=10&safesearch=true&min_width=1280`;
+  // Prøv strategiene i rekkefølge: først med category=people, så uten
+  // Stopp ved første som gir treff – da er bildet mest sannsynlig relevant
+  for (const sokeord of strategier) {
+    console.log(`Prøver Pixabay-søk: "${sokeord}" (med people-filter)`);
+    let bilder = await pixabaySOk(apiKey, sokeord, true);
 
-    const options = {
-      hostname: 'pixabay.com',
-      path: path1,
-      method: 'GET',
-      headers: { 'User-Agent': 'YrkesappenMBO/1.0' },
-    };
+    if (!bilder.length) {
+      console.log(`Ingen treff med people-filter – prøver uten`);
+      bilder = await pixabaySOk(apiKey, sokeord, false);
+    }
 
-    const req = https.request(options, (res) => {
-      let raw = '';
-      res.on('data', c => raw += c);
-      res.on('end', () => {
-        try {
-          console.log('Pixabay status:', res.statusCode);
-          if (res.statusCode !== 200) {
-            console.error('Pixabay feil:', raw.slice(0, 200));
-            return resolve(null);
-          }
+    if (bilder.length > 0) {
+      console.log(`✅ Fant ${bilder.length} bilder for "${sokeord}"`);
+      // Velg tilfeldig blant topp 5 for variasjon
+      const bilde = bilder[Math.floor(Math.random() * Math.min(bilder.length, 5))];
+      const kreditt = {
+        fotograf: bilde.user || 'Ukjent',
+        kilde: 'Pixabay',
+        url: `https://pixabay.com/photos/${bilde.id}/`,
+        lisens: 'Pixabay-lisens',
+      };
+      console.log(`Kreditt: ${kreditt.fotograf} / Pixabay`);
+      console.log(`Størrelse: ${bilde.imageWidth}×${bilde.imageHeight}px`);
 
-          const json = JSON.parse(raw);
-          let bilder = json.hits || [];
-          console.log(`Pixabay fant ${bilder.length} bilder (med category=people)`);
+      return new Promise((resolve) => lastNedBildeUrl(bilde.largeImageURL, kreditt, resolve));
+    }
 
-          if (!bilder.length) {
-            console.log('Ingen treff – prøver uten kategorifilter');
-            const path2 = `/api/?key=${apiKey}&q=${sokeord}&image_type=photo&orientation=horizontal&per_page=10&safesearch=true&min_width=1280`;
-            const options2 = { hostname: 'pixabay.com', path: path2, method: 'GET', headers: { 'User-Agent': 'YrkesappenMBO/1.0' } };
-            const req2 = https.request(options2, (res2) => {
-              let raw2 = '';
-              res2.on('data', c => raw2 += c);
-              res2.on('end', () => {
-                try {
-                  const json2 = JSON.parse(raw2);
-                  const bilder2 = json2.hits || [];
-                  console.log(`Pixabay fant ${bilder2.length} bilder (uten filter)`);
-                  if (!bilder2.length) return resolve(null);
-                  const bilde2 = bilder2[Math.floor(Math.random() * Math.min(bilder2.length, 5))];
-                  const kreditt2 = {
-                    fotograf: bilde2.user || 'Ukjent',
-                    kilde: 'Pixabay',
-                    url: `https://pixabay.com/photos/${bilde2.id}/`,
-                    lisens: 'Pixabay-lisens',
-                  };
-                  console.log(`Kreditt: ${kreditt2.fotograf} / Pixabay`);
-                  lastNedBildeUrl(bilde2.largeImageURL, kreditt2, resolve);
-                } catch (e) { resolve(null); }
-              });
-            });
-            req2.on('error', () => resolve(null));
-            req2.end();
-            return;
-          }
+    console.log(`Ingen treff for "${sokeord}" – prøver neste strategi`);
+  }
 
-          const bilde = bilder[Math.floor(Math.random() * Math.min(bilder.length, 5))];
-          const kreditt = {
-            fotograf: bilde.user || 'Ukjent',
-            kilde: 'Pixabay',
-            url: `https://pixabay.com/photos/${bilde.id}/`,
-            lisens: 'Pixabay-lisens',
-          };
-          console.log(`Kreditt: ${kreditt.fotograf} / Pixabay`);
-          console.log(`Laster ned: ${bilde.imageWidth}×${bilde.imageHeight}px`);
-          lastNedBildeUrl(bilde.largeImageURL, kreditt, resolve);
-
-        } catch (e) {
-          console.error('Pixabay parse feil:', e.message);
-          resolve(null);
-        }
-      });
-      res.on('error', () => resolve(null));
-    });
-    req.on('error', (e) => {
-      console.error('Pixabay request feil:', e.message);
-      resolve(null);
-    });
-    req.end();
-  });
+  console.log('Ingen bilder funnet etter alle strategier – fortsetter uten bilde');
+  return null;
 }
 
 // ─── DOCX builder ──────────────────────────────────────────────────────────────
