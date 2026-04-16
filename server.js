@@ -321,18 +321,17 @@ async function oversettYrkeTilEngelsk(yrke) {
   });
 }
 
-function lastNedBildeUrl(imgUrl, resolve) {
+function lastNedBildeUrl(imgUrl, kreditt, resolve) {
   https.get(imgUrl, (imgRes) => {
-    // Følg redirect hvis nødvendig
     if (imgRes.statusCode === 301 || imgRes.statusCode === 302) {
-      return lastNedBildeUrl(imgRes.headers.location, resolve);
+      return lastNedBildeUrl(imgRes.headers.location, kreditt, resolve);
     }
     const chunks = [];
     imgRes.on('data', c => chunks.push(c));
     imgRes.on('end', () => {
       const buf = Buffer.concat(chunks);
       console.log(`Bilde lastet ned: ${Math.round(buf.length / 1024)} KB`);
-      resolve(buf.length > 5000 ? buf : null);
+      resolve(buf.length > 5000 ? { buf, kreditt } : null);
     });
     imgRes.on('error', (e) => {
       console.error('Nedlasting feilet:', e.message);
@@ -382,7 +381,6 @@ async function hentBildeBuf(yrke) {
           console.log(`Pixabay fant ${bilder.length} bilder (med category=people)`);
 
           if (!bilder.length) {
-            // Prøv uten kategorifilter
             console.log('Ingen treff – prøver uten kategorifilter');
             const path2 = `/api/?key=${apiKey}&q=${sokeord}&image_type=photo&orientation=horizontal&per_page=10&safesearch=true&min_width=1280`;
             const options2 = { hostname: 'pixabay.com', path: path2, method: 'GET', headers: { 'User-Agent': 'YrkesappenMBO/1.0' } };
@@ -395,10 +393,15 @@ async function hentBildeBuf(yrke) {
                   const bilder2 = json2.hits || [];
                   console.log(`Pixabay fant ${bilder2.length} bilder (uten filter)`);
                   if (!bilder2.length) return resolve(null);
-                  const bilde = bilder2[Math.floor(Math.random() * Math.min(bilder2.length, 5))];
-                  const imgUrl = bilde.largeImageURL;
-                  console.log(`Laster ned: ${bilde.imageWidth}×${bilde.imageHeight}px`);
-                  lastNedBildeUrl(imgUrl, resolve);
+                  const bilde2 = bilder2[Math.floor(Math.random() * Math.min(bilder2.length, 5))];
+                  const kreditt2 = {
+                    fotograf: bilde2.user || 'Ukjent',
+                    kilde: 'Pixabay',
+                    url: `https://pixabay.com/photos/${bilde2.id}/`,
+                    lisens: 'Pixabay-lisens',
+                  };
+                  console.log(`Kreditt: ${kreditt2.fotograf} / Pixabay`);
+                  lastNedBildeUrl(bilde2.largeImageURL, kreditt2, resolve);
                 } catch (e) { resolve(null); }
               });
             });
@@ -407,11 +410,16 @@ async function hentBildeBuf(yrke) {
             return;
           }
 
-          // Velg tilfeldig blant de 5 beste
           const bilde = bilder[Math.floor(Math.random() * Math.min(bilder.length, 5))];
-          const imgUrl = bilde.largeImageURL;
+          const kreditt = {
+            fotograf: bilde.user || 'Ukjent',
+            kilde: 'Pixabay',
+            url: `https://pixabay.com/photos/${bilde.id}/`,
+            lisens: 'Pixabay-lisens',
+          };
+          console.log(`Kreditt: ${kreditt.fotograf} / Pixabay`);
           console.log(`Laster ned: ${bilde.imageWidth}×${bilde.imageHeight}px`);
-          lastNedBildeUrl(imgUrl, resolve);
+          lastNedBildeUrl(bilde.largeImageURL, kreditt, resolve);
 
         } catch (e) {
           console.error('Pixabay parse feil:', e.message);
@@ -429,8 +437,10 @@ async function hentBildeBuf(yrke) {
 }
 
 // ─── DOCX builder ──────────────────────────────────────────────────────────────
-async function buildDocx(data, hjelpesprak, plassering, bildeBuf) {
+async function buildDocx(data, hjelpesprak, plassering, bildeObj) {
   const { yrke, niva, intro, seksjoner, ordliste } = data;
+  const bildeBuf = bildeObj ? bildeObj.buf : null;
+  const kreditt  = bildeObj ? bildeObj.kreditt : null;
   const showHelp = hjelpesprak && hjelpesprak !== 'ingen';
   const ordlisteAtEnd = showHelp && plassering === 'slutt';
 
@@ -529,10 +539,23 @@ async function buildDocx(data, hjelpesprak, plassering, bildeBuf) {
     const skala = Math.min(maxW / origW, maxH / origH, 1);
     const visW = Math.round(origW * skala);
     const visH = Math.round(origH * skala);
-    return [new Paragraph({
-      spacing: { before: 0, after: 0 },
-      children: [new ImageRun({ data: bildeBuf, transformation: { width: visW, height: visH }, type: 'jpg' })],
-    })];
+    return [
+      new Paragraph({
+        spacing: { before: 0, after: 0 },
+        children: [new ImageRun({ data: bildeBuf, transformation: { width: visW, height: visH }, type: 'jpg' })],
+      }),
+      // Kreditering under bildet – beste praksis jfr. Pixabay-lisens
+      new Paragraph({
+        spacing: { before: 40, after: 0 },
+        children: [new TextRun({
+          text: `📷 Foto: ${kreditt.fotograf} / ${kreditt.kilde} (${kreditt.lisens})`,
+          size: 16,
+          italics: true,
+          color: C.textMid,
+          font: 'Calibri',
+        })],
+      }),
+    ];
   })();
 
   const titleBlock = [
@@ -665,13 +688,15 @@ async function buildDocx(data, hjelpesprak, plassering, bildeBuf) {
 }
 
 // ─── PPTX builder ──────────────────────────────────────────────────────────────
-async function buildPptx(data, yrke, niva, hjelpesprak, fokus, bildeBuf) {
+async function buildPptx(data, yrke, niva, hjelpesprak, fokus, bildeObj) {
   const { hms, egenskaper, arbeidsoppgaver, utdanning } = data.pptx;
   const seksjoner = data.seksjoner || [];
   const ordliste = data.ordliste || [];
   const showHelp = hjelpesprak && hjelpesprak !== 'ingen';
   const hasFokus = fokus && fokus.trim().length > 0;
   const tekster = seksjoner.filter(s => s.type === 'tekst').slice(0, 3);
+  const bildeBuf = bildeObj ? bildeObj.buf : null;
+  const kreditt  = bildeObj ? bildeObj.kreditt : null;
 
   const pres = new pptxgen();
   pres.layout = 'LAYOUT_16x9';
@@ -724,6 +749,15 @@ async function buildPptx(data, yrke, niva, hjelpesprak, fokus, bildeBuf) {
     s.addText(`Norsknivå ${niva}`, { x: 0.5, y: 2.85, w: 9, h: 0.5, fontSize: 20, color: C.accent, fontFace: 'Calibri', align: 'center', valign: 'middle', margin: 0 });
     s.addText('Molde voksenopplæringssenter – MBO', { x: 0.5, y: 3.55, w: 9, h: 0.4, fontSize: 13, color: C.bgGray, fontFace: 'Calibri', align: 'center', valign: 'middle', margin: 0 });
     if (hasFokus) s.addText(`Fokus: ${fokus}`, { x: 1.5, y: 4.1, w: 7, h: 0.5, fontSize: 13, italic: true, color: C.accent, fontFace: 'Calibri', align: 'center', valign: 'middle', wrap: true, shrinkText: true, margin: 4 });
+
+    // Kreditering – diskret, nederst til høyre, over gullbanneret
+    if (bildeData && kreditt) {
+      s.addText(`📷 ${kreditt.fotograf} / ${kreditt.kilde}`, {
+        x: 5.5, y: 5.05, w: 4.3, h: 0.32,
+        fontSize: 8, italic: true, color: 'DDDDDD', fontFace: 'Calibri',
+        align: 'right', valign: 'middle', margin: 0,
+      });
+    }
   }
 
   // ── Slide 2 – Hva er dette yrket? ───────────────────────────────────────────
@@ -736,6 +770,14 @@ async function buildPptx(data, yrke, niva, hjelpesprak, fokus, bildeBuf) {
       s.addShape(pres.shapes.RECTANGLE, { x: 6.3, y: 1.1, w: 3.45, h: 4.3, fill: { color: C.primary, transparency: 60 }, line: { color: C.primary, transparency: 60 } });
       s.addShape(pres.shapes.RECTANGLE, { x: 6.3, y: 4.7,  w: 3.45, h: 0.7, fill: { color: C.primary, transparency: 15 }, line: { color: C.primary, transparency: 15 } });
       safeText(s, yrke, 6.35, 4.72, 3.35, 0.65, { bold: true, color: C.white, fontSize: 15, align: 'center', valign: 'middle', margin: 4 });
+      // Kreditering under bildepanelet
+      if (kreditt) {
+        s.addText(`📷 ${kreditt.fotograf} / ${kreditt.kilde}`, {
+          x: 6.3, y: 5.42, w: 3.45, h: 0.2,
+          fontSize: 7, italic: true, color: C.textMid, fontFace: 'Calibri',
+          align: 'center', valign: 'middle', margin: 0,
+        });
+      }
     } else {
       s.addShape(pres.shapes.RECTANGLE, { x: 6.3, y: 1.1, w: 3.45, h: 4.3, fill: { color: C.primary }, line: { color: C.primary }, shadow: makeShadow() });
       s.addText(yrke.charAt(0).toUpperCase(), { x: 6.3, y: 1.1, w: 3.45, h: 3.0, fontSize: 110, bold: true, color: C.white, fontFace: 'Calibri', align: 'center', valign: 'middle', margin: 0 });
@@ -904,12 +946,12 @@ app.post('/api/generer', async (req, res) => {
       return res.status(500).json({ feil: 'Klarte ikke tolke svar fra AI. Prøv igjen.' });
     }
 
-    // Hent bilde fra Pixabay
-    const bildeBuf = await hentBildeBuf(yrke);
+    // Hent bilde fra Pixabay (returnerer { buf, kreditt } eller null)
+    const bildeObj = await hentBildeBuf(yrke);
 
     const [docxBuf, pptxBuf] = await Promise.all([
-      buildDocx(data, sprak, plassering, bildeBuf),
-      buildPptx(data, yrke, niva, sprak, fokus, bildeBuf),
+      buildDocx(data, sprak, plassering, bildeObj),
+      buildPptx(data, yrke, niva, sprak, fokus, bildeObj),
     ]);
 
     const safeName = yrke.replace(/[^a-zA-ZæøåÆØÅ0-9\-]/g, '_');
