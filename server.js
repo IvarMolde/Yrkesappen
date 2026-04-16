@@ -516,43 +516,71 @@ async function buildDocx(data, hjelpesprak, plassering, bildeObj) {
   }
 
   // Les JPEG-dimensjoner fra SOF-marker for korrekt skalering
+  // ── Robust JPEG-dimensjonsleser ──────────────────────────────────────────────
+  // Støtter baseline (SOF0/SOF2) og progressive JPEG (SOF1/SOF3 m.fl.)
   function lesJpegDimensjoner(buf) {
     try {
-      for (let i = 0; i < buf.length - 8; i++) {
-        if (buf[i] === 0xFF && (buf[i+1] === 0xC0 || buf[i+1] === 0xC2)) {
-          return {
-            h: (buf[i+5] << 8) | buf[i+6],
-            w: (buf[i+7] << 8) | buf[i+8],
-          };
+      // Alle SOF-markører som inneholder dimensjoner
+      const sofMarkors = [0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB];
+      let i = 0;
+      // Sjekk JPEG-signatur
+      if (buf[0] !== 0xFF || buf[1] !== 0xD8) return { w: 1280, h: 853 };
+      i = 2;
+      while (i < buf.length - 9) {
+        if (buf[i] !== 0xFF) { i++; continue; }
+        const marker = buf[i + 1];
+        if (sofMarkors.includes(marker)) {
+          const h = (buf[i + 5] << 8) | buf[i + 6];
+          const w = (buf[i + 7] << 8) | buf[i + 8];
+          if (w > 0 && h > 0) {
+            console.log(`JPEG-dimensjoner lest: ${w}×${h}px`);
+            return { w, h };
+          }
         }
+        // Hopp til neste marker via lengdefeltet
+        const len = (buf[i + 2] << 8) | buf[i + 3];
+        i += 2 + (len > 1 ? len : 1);
       }
     } catch (e) { /* ignorer */ }
-    return { w: 1280, h: 853 }; // standardverdi
+    console.log('JPEG-dimensjoner ikke funnet – bruker standard 1280×853');
+    return { w: 1280, h: 853 };
   }
 
-  // Tittelblokk
+  // ── Beregn visningsdimensjoner med bevart aspektforhold ──────────────────────
+  // Bildet skaleres NED for å passe i maxW×maxH – aldri opp, aldri strekk
+  function beregnDimensjoner(origW, origH, maxW, maxH) {
+    const skala = Math.min(maxW / origW, maxH / origH, 1);
+    return {
+      w: Math.round(origW * skala),
+      h: Math.round(origH * skala),
+    };
+  }
+
+  // Tittelblokk i Word
   const bildeParagraph = (() => {
     if (!bildeBuf) return [];
     const { w: origW, h: origH } = lesJpegDimensjoner(bildeBuf);
-    const maxW = 620;
-    const maxH = 280;
-    const skala = Math.min(maxW / origW, maxH / origH, 1);
-    const visW = Math.round(origW * skala);
-    const visH = Math.round(origH * skala);
+
+    // A4 innholdsbredde: 11906 - 2×1134 = 9638 DXA
+    // Ved 96 dpi tilsvarer 9638 DXA ≈ 643 px → vi bruker 620px som sikker grense
+    // Maks høyde 260px for å holde forsiden kompakt
+    const { w: visW, h: visH } = beregnDimensjoner(origW, origH, 620, 260);
+    console.log(`Word-bilde: orig ${origW}×${origH} → vis ${visW}×${visH}`);
+
     return [
       new Paragraph({
         spacing: { before: 0, after: 0 },
-        children: [new ImageRun({ data: bildeBuf, transformation: { width: visW, height: visH }, type: 'jpg' })],
+        children: [new ImageRun({
+          data: bildeBuf,
+          transformation: { width: visW, height: visH },
+          type: 'jpg',
+        })],
       }),
-      // Kreditering under bildet – beste praksis jfr. Pixabay-lisens
       new Paragraph({
-        spacing: { before: 40, after: 0 },
+        spacing: { before: 30, after: 0 },
         children: [new TextRun({
           text: `📷 Foto: ${kreditt.fotograf} / ${kreditt.kilde} (${kreditt.lisens})`,
-          size: 16,
-          italics: true,
-          color: C.textMid,
-          font: 'Calibri',
+          size: 16, italics: true, color: C.textMid, font: 'Calibri',
         })],
       }),
     ];
@@ -734,13 +762,48 @@ async function buildPptx(data, yrke, niva, hjelpesprak, fokus, bildeObj) {
 
   const bildeData = bildeBuf ? `image/jpeg;base64,${bildeBuf.toString('base64')}` : null;
 
-  // ── Slide 1 – Tittel ──────────────────────────────────────────────────────────
+  // ── Les aspektforhold fra bildebufferen ──────────────────────────────────────
+  // Brukes til å beregne riktige dimensjoner i PPTX uten strekking
+  const bildeDim = (() => {
+    if (!bildeBuf) return { w: 1280, h: 853, ar: 1.5 };
+    try {
+      const sofMarkors = [0xC0,0xC1,0xC2,0xC3,0xC5,0xC6,0xC7,0xC9,0xCA,0xCB];
+      let i = 2;
+      while (i < bildeBuf.length - 9) {
+        if (bildeBuf[i] !== 0xFF) { i++; continue; }
+        if (sofMarkors.includes(bildeBuf[i+1])) {
+          const h = (bildeBuf[i+5] << 8) | bildeBuf[i+6];
+          const w = (bildeBuf[i+7] << 8) | bildeBuf[i+8];
+          if (w > 0 && h > 0) {
+            console.log(`PPTX-bilde dimensjoner: ${w}×${h}px (AR=${(w/h).toFixed(2)})`);
+            return { w, h, ar: w / h };
+          }
+        }
+        const len = (bildeBuf[i+2] << 8) | bildeBuf[i+3];
+        i += 2 + (len > 1 ? len : 1);
+      }
+    } catch(e) {}
+    return { w: 1280, h: 853, ar: 1.5 };
+  })();
+
+  // ── Slide 1 – Tittel med bilde ───────────────────────────────────────────────
+  // Slide: 10" × 5.625" (AR=1.778)
+  // cover: skalerer bildet til å dekke hele sliden og klipper langs korteste akse
+  // Dette er riktig for bakgrunnsbilder – bevarer aspektforhold, ingen strekking
   {
     const s = pres.addSlide();
     s.background = { color: C.primary };
     if (bildeData) {
-      s.addImage({ data: bildeData, x: 0, y: 0, w: 10, h: 5.625, sizing: { type: 'cover', w: 10, h: 5.625 } });
-      s.addShape(pres.shapes.RECTANGLE, { x: 0, y: 0, w: 10, h: 5.625, fill: { color: C.primary, transparency: 35 }, line: { color: C.primary, transparency: 35 } });
+      s.addImage({
+        data: bildeData,
+        x: 0, y: 0, w: 10, h: 5.625,
+        sizing: { type: 'cover', w: 10, h: 5.625 },
+      });
+      s.addShape(pres.shapes.RECTANGLE, {
+        x: 0, y: 0, w: 10, h: 5.625,
+        fill: { color: C.primary, transparency: 35 },
+        line: { color: C.primary, transparency: 35 },
+      });
     }
     s.addShape(pres.shapes.RECTANGLE, { x: 0, y: 0,     w: 10, h: 0.2, fill: { color: C.accent }, line: { color: C.accent } });
     s.addShape(pres.shapes.RECTANGLE, { x: 0, y: 5.425, w: 10, h: 0.2, fill: { color: C.accent }, line: { color: C.accent } });
@@ -749,8 +812,6 @@ async function buildPptx(data, yrke, niva, hjelpesprak, fokus, bildeObj) {
     s.addText(`Norsknivå ${niva}`, { x: 0.5, y: 2.85, w: 9, h: 0.5, fontSize: 20, color: C.accent, fontFace: 'Calibri', align: 'center', valign: 'middle', margin: 0 });
     s.addText('Molde voksenopplæringssenter – MBO', { x: 0.5, y: 3.55, w: 9, h: 0.4, fontSize: 13, color: C.bgGray, fontFace: 'Calibri', align: 'center', valign: 'middle', margin: 0 });
     if (hasFokus) s.addText(`Fokus: ${fokus}`, { x: 1.5, y: 4.1, w: 7, h: 0.5, fontSize: 13, italic: true, color: C.accent, fontFace: 'Calibri', align: 'center', valign: 'middle', wrap: true, shrinkText: true, margin: 4 });
-
-    // Kreditering – diskret, nederst til høyre, over gullbanneret
     if (bildeData && kreditt) {
       s.addText(`📷 ${kreditt.fotograf} / ${kreditt.kilde}`, {
         x: 5.5, y: 5.05, w: 4.3, h: 0.32,
@@ -761,19 +822,62 @@ async function buildPptx(data, yrke, niva, hjelpesprak, fokus, bildeObj) {
   }
 
   // ── Slide 2 – Hva er dette yrket? ───────────────────────────────────────────
+  // Høyre panel: 3.45" × 4.3" (portrettformat, AR=0.80)
+  // Pixabay-bilder er typisk landskap (AR ≈ 1.5).
+  // contain: bildet skaleres ned til å passe INNI boksen uten å klippe – ingen strekking.
+  // Teal-bakgrunn fyller det som er igjen rundt bildet.
   {
     const s = lightSlide('Hva er dette yrket?', 'Forberedelse til arbeidsheftet');
     const items = arbeidsoppgaver.map((t, idx) => ({ text: t, options: { bullet: true, breakLine: idx < arbeidsoppgaver.length - 1, fontSize: 15, color: C.textDark, fontFace: 'Calibri', paraSpaceAfter: 8 } }));
     s.addText(items, { x: 0.25, y: 1.1, w: 5.8, h: 4.3, valign: 'top', wrap: true, shrinkText: true, margin: 8 });
     if (bildeData) {
-      s.addImage({ data: bildeData, x: 6.3, y: 1.1, w: 3.45, h: 4.3, sizing: { type: 'cover', w: 3.45, h: 4.3 } });
-      s.addShape(pres.shapes.RECTANGLE, { x: 6.3, y: 1.1, w: 3.45, h: 4.3, fill: { color: C.primary, transparency: 60 }, line: { color: C.primary, transparency: 60 } });
-      s.addShape(pres.shapes.RECTANGLE, { x: 6.3, y: 4.7,  w: 3.45, h: 0.7, fill: { color: C.primary, transparency: 15 }, line: { color: C.primary, transparency: 15 } });
+      // Panel-dimensjoner i tommer
+      const panelW = 3.45;
+      const panelH = 4.3;
+      const panelAR = panelW / panelH; // 0.802
+
+      // Beregn contain-plassering: skalerer bildet ned til å passe inni panelet
+      let imgW, imgH, imgX, imgY;
+      if (bildeDim.ar > panelAR) {
+        // Bildet er bredere enn panelet → begrenses av bredde
+        imgW = panelW;
+        imgH = panelW / bildeDim.ar;
+        imgX = 6.3;
+        imgY = 1.1 + (panelH - imgH) / 2; // sentrert vertikalt
+      } else {
+        // Bildet er høyere enn panelet → begrenses av høyde
+        imgH = panelH;
+        imgW = panelH * bildeDim.ar;
+        imgX = 6.3 + (panelW - imgW) / 2; // sentrert horisontalt
+        imgY = 1.1;
+      }
+
+      // Teal-bakgrunn for hele panelet (fyller rundt bildet)
+      s.addShape(pres.shapes.RECTANGLE, {
+        x: 6.3, y: 1.1, w: panelW, h: panelH,
+        fill: { color: C.primary }, line: { color: C.primary },
+      });
+      // Bildet med nøyaktig beregnet posisjon og størrelse – ingen strekking
+      s.addImage({
+        data: bildeData,
+        x: imgX, y: imgY, w: imgW, h: imgH,
+      });
+      // Lett overlay bare over bildet
+      s.addShape(pres.shapes.RECTANGLE, {
+        x: imgX, y: imgY, w: imgW, h: imgH,
+        fill: { color: C.primary, transparency: 55 },
+        line: { color: C.primary, transparency: 55 },
+      });
+      // Yrkestittel-bar nederst i panelet
+      s.addShape(pres.shapes.RECTANGLE, {
+        x: 6.3, y: 4.7, w: panelW, h: 0.7,
+        fill: { color: C.primary, transparency: 10 },
+        line: { color: C.primary, transparency: 10 },
+      });
       safeText(s, yrke, 6.35, 4.72, 3.35, 0.65, { bold: true, color: C.white, fontSize: 15, align: 'center', valign: 'middle', margin: 4 });
-      // Kreditering under bildepanelet
       if (kreditt) {
         s.addText(`📷 ${kreditt.fotograf} / ${kreditt.kilde}`, {
-          x: 6.3, y: 5.42, w: 3.45, h: 0.2,
+          x: 6.3, y: 5.42, w: panelW, h: 0.2,
           fontSize: 7, italic: true, color: C.textMid, fontFace: 'Calibri',
           align: 'center', valign: 'middle', margin: 0,
         });
