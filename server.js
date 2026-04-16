@@ -273,7 +273,8 @@ STRENGE KRAV:
 - Grammatikkfokus MÅ stemme med ${niva}: ${grammatikkMap[niva]}
 - Alle oppgaver har nøyaktig 5 delopgaver (a–e), der a–c er litt lettere enn d–e
 - Ordlisten: 12–16 ord hentet fra alle tre tekstene
-- Legg til totalt 10–12 seksjoner i "seksjoner"-arrayet (3 tekster + 7–9 oppgaver)${sprak && sprak !== 'ingen' ? `\n- OVERSETTELSE: Hvert "oversettelse"-felt MÅ inneholde ${sprak}. KUN ${sprak}. Kontroller hvert felt før du svarer.` : ''}`;
+- Legg til totalt 10–12 seksjoner i "seksjoner"-arrayet (3 tekster + 7–9 oppgaver)
+- NORSK RETTSKRIVING: Yrkestitler skrives ALLTID med liten forbokstav på norsk. Skriv «sykepleier», ikke «Sykepleier». Skriv «begravelsesagent», ikke «Begravelsesagent». Dette gjelder inne i setninger, i oppgavetitler og overalt i teksten. Unntaket er kun om yrket starter en setning.${sprak && sprak !== 'ingen' ? `\n- OVERSETTELSE: Hvert "oversettelse"-felt MÅ inneholde ${sprak}. KUN ${sprak}. Kontroller hvert felt før du svarer.` : ''}`;
 }
 
 // ─── Bildehenting fra Pixabay ─────────────────────────────────────────────────
@@ -1046,6 +1047,38 @@ app.post('/api/generer', async (req, res) => {
       console.error('JSON feil:', clean.slice(0, 400));
       return res.status(500).json({ feil: 'Klarte ikke tolke svar fra AI. Prøv igjen.' });
     }
+
+    // ── Sikkerhetsnett: rett opp stor forbokstav på yrkestittel ───────────────
+    // Norsk rettskriving: yrkestitler har liten forbokstav inne i setninger.
+    // Gemini bruker av og til stor forbokstav pga. engelsk påvirkning.
+    // Vi erstatter alle forekomster av yrket med stor forbokstav (ikke ved setningsstart).
+    function rettForbokstav(tekst, yrke) {
+      if (!tekst || !yrke) return tekst;
+      const stor = yrke.charAt(0).toUpperCase() + yrke.slice(1);
+      const liten = yrke.charAt(0).toLowerCase() + yrke.slice(1);
+      // Matcher yrket + vanlige norske bøyningsendelser, ikke ved setningsstart
+      return tekst.replace(
+        new RegExp(`(?<![.!?]\\s)(?<!^)\\b${stor}(en|er|ene|ens|s)?\\b`, 'g'),
+        (match, ending) => liten + (ending || '')
+      );
+    }
+
+    // Anvend på alle tekstfelter i seksjoner
+    if (data.seksjoner) {
+      data.seksjoner = data.seksjoner.map(s => {
+        if (s.innhold) s.innhold = rettForbokstav(s.innhold, yrke);
+        if (s.tittel)  s.tittel  = rettForbokstav(s.tittel,  yrke);
+        if (s.instruksjon) s.instruksjon = rettForbokstav(s.instruksjon, yrke);
+        if (s.delopgaver) {
+          s.delopgaver = s.delopgaver.map(d => ({
+            ...d,
+            tekst: rettForbokstav(d.tekst, yrke),
+          }));
+        }
+        return s;
+      });
+    }
+    if (data.intro) data.intro = rettForbokstav(data.intro, yrke);
 
     // Hent bilde fra Pixabay (returnerer { buf, kreditt } eller null)
     const bildeObj = await hentBildeBuf(yrke);
