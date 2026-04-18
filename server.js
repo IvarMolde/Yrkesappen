@@ -277,9 +277,127 @@ STRENGE KRAV:
 - NORSK RETTSKRIVING: Yrkestitler skrives ALLTID med liten forbokstav på norsk. Skriv «sykepleier», ikke «Sykepleier». Skriv «begravelsesagent», ikke «Begravelsesagent». Dette gjelder inne i setninger, i oppgavetitler og overalt i teksten. Unntaket er kun om yrket starter en setning.${sprak && sprak !== 'ingen' ? `\n- OVERSETTELSE: Hvert "oversettelse"-felt MÅ inneholde ${sprak}. KUN ${sprak}. Kontroller hvert felt før du svarer.` : ''}`;
 }
 
-// ─── Bildehenting fra Pixabay ─────────────────────────────────────────────────
+// ─── Grammatikk-prompt ────────────────────────────────────────────────────────
+function buildGrammatikkPrompt(yrke, niva, grammatikkFokus) {
+  const nivaBeskriv = {
+    A1: 'Svært enkle setninger. Maks 6-8 ord per setning. Kun presens. Hverdagsord.',
+    A2: 'Enkle setninger. Maks 10 ord. Presens og preteritum. Kjente faguttrykk.',
+    B1: 'Moderat komplekse setninger. Presens, preteritum, perfektum. Fagord forklares.',
+    B2: 'Komplekse setninger. Alle tider, passiv, relativsetninger. Fagord brukes naturlig.',
+  }[niva] || '';
 
-// ─── Bildehenting fra Pixabay ─────────────────────────────────────────────────
+  const erTilfeldig = grammatikkFokus === 'tilfeldig';
+  const fokusInstruksjon = erTilfeldig
+    ? `Velg selv et passende grammatisk tema for nivå ${niva}, basert på CEFR. Typiske temaer for ${niva}: ${{
+        A1: 'presens av vanlige verb, SVO-ordstilling, personlige pronomen, bestemt/ubestemt form',
+        A2: 'preteritum av sterke og svake verb, V2-regelen/inversjon, bindeord, adjektivbøyning',
+        B1: 'perfektum, modalverb + infinitiv, leddsetninger, refleksive verb',
+        B2: 'passiv konstruksjon, kondisjonalis, relativsetninger, sammensatte ord',
+      }[niva]}.`
+    : `Grammatisk tema: "${grammatikkFokus}". Tilpass forklaringen og ALLE oppgavene nøyaktig til dette temaet på nivå ${niva}.`;
+
+  return `Du er en erfaren norsklærer som lager grammatikkmateriell for voksne innvandrere (norsk som andrespråk) på CEFR-nivå ${niva}.
+Yrke for eksempler og setninger: "${yrke}".
+
+${fokusInstruksjon}
+
+NIVÅTILPASNING ${niva}: ${nivaBeskriv}
+
+LAG EN GRAMMATIKKBLOKK med forklaring og 5 oppgaver (se JSON-struktur under).
+
+KRAV TIL FORKLARINGEN:
+- Pedagogisk og faglig korrekt norsk bokmål
+- Forklar: hva regelen er, når den brukes, og gi 2-3 korte eksempler fra arbeidslivet
+- Tilpasset ${niva}-nivå – enkelt språk for lavere nivå, mer presist for høyere
+- Maks 120 ord
+
+KRAV TIL OPPGAVENE:
+- Alle setninger og eksempler handler om yrket "${yrke}" eller arbeidslivet
+- Stigende vanskelighetsgrad innen hver oppgave (a enklest → e vanskeligst)
+- Norsk rettskriving: yrkestitler med liten forbokstav inne i setninger
+- Alle "fasit"-felt MÅ inneholde 100% korrekt norsk bokmål
+- Oppgave 1 (fyll_inn): Bruk parentes rundt ord som skal bøyes, f.eks. "(jobbe) → jobbet"
+- Oppgave 2 (multiple_choice): Alltid nøyaktig 3 alternativer, kun 1 korrekt
+- Oppgave 3 (ordstilling): Skill ord med " / ", f.eks. "i dag / jobber / hun / tidlig"
+- Oppgave 4 (matching): Nøyaktig 5 par (a-e), kolonne A og kolonne B
+- Oppgave 5 (korriger): Én og bare én grammatisk feil per setning
+
+Svar KUN med gyldig JSON, ingen markdown:
+
+{
+  "tema": "Kort navn på grammatikktemaet (maks 5 ord)",
+  "forklaring": "Pedagogisk forklaring tilpasset ${niva}. Inkluder hva regelen er, når den brukes, og 2-3 eksempler fra arbeidslivet til ${yrke}.",
+  "oppgaver": [
+    {
+      "nummer": 1,
+      "type": "fyll_inn",
+      "tittel": "Fyll inn riktig form",
+      "instruksjon": "Fyll inn riktig form av ordet i parentes.",
+      "delopgaver": [
+        { "bokstav": "a", "tekst": "Setning med (infinitiv) som skal bøyes.", "fasit": "korrekt bøyd form" },
+        { "bokstav": "b", "tekst": "...", "fasit": "..." },
+        { "bokstav": "c", "tekst": "...", "fasit": "..." },
+        { "bokstav": "d", "tekst": "...", "fasit": "..." },
+        { "bokstav": "e", "tekst": "...", "fasit": "..." }
+      ]
+    },
+    {
+      "nummer": 2,
+      "type": "multiple_choice",
+      "tittel": "Velg riktig alternativ",
+      "instruksjon": "Velg det riktige alternativet (a, b eller c).",
+      "delopgaver": [
+        { "bokstav": "a", "tekst": "Setning med ___ der ett ord mangler.", "alternativer": ["alt1", "alt2", "alt3"], "fasit": "riktig alternativ" },
+        { "bokstav": "b", "tekst": "...", "alternativer": ["...", "...", "..."], "fasit": "..." },
+        { "bokstav": "c", "tekst": "...", "alternativer": ["...", "...", "..."], "fasit": "..." },
+        { "bokstav": "d", "tekst": "...", "alternativer": ["...", "...", "..."], "fasit": "..." },
+        { "bokstav": "e", "tekst": "...", "alternativer": ["...", "...", "..."], "fasit": "..." }
+      ]
+    },
+    {
+      "nummer": 3,
+      "type": "ordstilling",
+      "tittel": "Sett ordene i riktig rekkefølge",
+      "instruksjon": "Sett ordene i riktig rekkefølge og skriv hele setningen.",
+      "delopgaver": [
+        { "bokstav": "a", "tekst": "ord1 / ord2 / ord3 / ord4", "fasit": "Riktig setning." },
+        { "bokstav": "b", "tekst": "...", "fasit": "..." },
+        { "bokstav": "c", "tekst": "...", "fasit": "..." },
+        { "bokstav": "d", "tekst": "...", "fasit": "..." },
+        { "bokstav": "e", "tekst": "...", "fasit": "..." }
+      ]
+    },
+    {
+      "nummer": 4,
+      "type": "matching",
+      "tittel": "Koble sammen",
+      "instruksjon": "Koble hvert uttrykk i kolonne A med riktig svar i kolonne B.",
+      "delopgaver": [
+        { "bokstav": "a", "tekst": "Kolonne A: setningsdel eller ord", "match": "Kolonne B: riktig fortsettelse" },
+        { "bokstav": "b", "tekst": "...", "match": "..." },
+        { "bokstav": "c", "tekst": "...", "match": "..." },
+        { "bokstav": "d", "tekst": "...", "match": "..." },
+        { "bokstav": "e", "tekst": "...", "match": "..." }
+      ]
+    },
+    {
+      "nummer": 5,
+      "type": "korriger",
+      "tittel": "Korriger feilen",
+      "instruksjon": "Hver setning inneholder én grammatisk feil. Skriv setningen riktig.",
+      "delopgaver": [
+        { "bokstav": "a", "tekst": "Setning med én grammatisk feil.", "fasit": "Riktig setning." },
+        { "bokstav": "b", "tekst": "...", "fasit": "..." },
+        { "bokstav": "c", "tekst": "...", "fasit": "..." },
+        { "bokstav": "d", "tekst": "...", "fasit": "..." },
+        { "bokstav": "e", "tekst": "...", "fasit": "..." }
+      ]
+    }
+  ]
+}`;
+}
+
+
 
 async function lagSokestrategier(yrke) {
   // Ber Gemini om FLERE søkealternativer, rangert fra mest til minst spesifikt.
@@ -435,7 +553,7 @@ async function hentBildeBuf(yrke) {
 }
 
 // ─── DOCX builder ──────────────────────────────────────────────────────────────
-async function buildDocx(data, hjelpesprak, plassering, bildeObj) {
+async function buildDocx(data, hjelpesprak, plassering, bildeObj, grammatikkData) {
   const { yrke, niva, intro, seksjoner, ordliste } = data;
   const bildeBuf = bildeObj ? bildeObj.buf : null;
   const kreditt  = bildeObj ? bildeObj.kreditt : null;
@@ -673,6 +791,132 @@ async function buildDocx(data, hjelpesprak, plassering, bildeObj) {
     }),
   ] : [];
 
+  // ── Grammatikkblokk (valgfritt) ──────────────────────────────────────────────
+  const grammatikkBlock = [];
+  if (grammatikkData && grammatikkData.oppgaver) {
+    const typeIkonGram = {
+      fyll_inn:       '✏️',
+      multiple_choice:'☑️',
+      ordstilling:    '🔀',
+      matching:       '🔗',
+      korriger:       '🔍',
+    };
+
+    // Seksjonstittel
+    grammatikkBlock.push(...sectionHeader(`Grammatikk: ${grammatikkData.tema}`));
+
+    // Forklaringsboks med teal bakgrunn
+    grammatikkBlock.push(
+      new Paragraph({
+        spacing: { before: 0, after: 0 },
+        shading: { fill: C.primary, type: ShadingType.CLEAR },
+        children: [new TextRun({ text: '  📘 Grammatikkforklaring  ', bold: true, size: 24, color: C.white, font: 'Calibri' })],
+      }),
+      new Paragraph({
+        spacing: { before: 0, after: 240 },
+        shading: { fill: 'E6F4F6', type: ShadingType.CLEAR },
+        border: { left: { style: BorderStyle.SINGLE, size: 12, color: C.secondary, space: 8 } },
+        children: [new TextRun({ text: grammatikkData.forklaring, size: 24, font: 'Calibri', color: C.textDark })],
+      })
+    );
+
+    // Fem oppgaver
+    grammatikkData.oppgaver.forEach((oppg) => {
+      const ikon = typeIkonGram[oppg.type] || '📝';
+
+      // Oppgaveheader
+      grammatikkBlock.push(
+        new Paragraph({
+          spacing: { before: 280, after: 60 },
+          shading: { fill: C.secondary, type: ShadingType.CLEAR },
+          children: [new TextRun({ text: `  ${ikon} Oppgave G${oppg.nummer}: ${oppg.tittel}  `, bold: true, size: 24, color: C.white, font: 'Calibri' })],
+        }),
+        new Paragraph({
+          spacing: { before: 60, after: 100 },
+          children: [new TextRun({ text: oppg.instruksjon, italics: true, size: 22, color: C.textMid, font: 'Calibri' })],
+        })
+      );
+
+      // Delopgaver – ulik layout per type
+      oppg.delopgaver.forEach((d, idx) => {
+        const fill = idx % 2 === 0 ? C.white : C.bgGray;
+
+        if (oppg.type === 'multiple_choice' && d.alternativer) {
+          // Multiple choice: vis alternativer på egen linje
+          grammatikkBlock.push(
+            new Paragraph({
+              spacing: { before: 60, after: 20 },
+              shading: { fill, type: ShadingType.CLEAR },
+              children: [
+                new TextRun({ text: `${d.bokstav})  `, bold: true, size: 24, color: C.primary, font: 'Calibri' }),
+                new TextRun({ text: d.tekst, size: 24, font: 'Calibri' }),
+              ],
+            }),
+            new Paragraph({
+              spacing: { before: 0, after: 20 },
+              shading: { fill, type: ShadingType.CLEAR },
+              indent: { left: 360 },
+              children: d.alternativer.map((alt, ai) =>
+                new TextRun({ text: `  ${['A', 'B', 'C'][ai]}) ${alt}   `, size: 22, font: 'Calibri', color: C.textMid })
+              ),
+            }),
+            svarLinje()
+          );
+        } else if (oppg.type === 'matching') {
+          // Matching: to kolonner
+          grammatikkBlock.push(
+            new Table({
+              width: { size: 9000, type: WidthType.DXA },
+              columnWidths: [400, 4000, 4600],
+              rows: [new TableRow({ children: [
+                new TableCell({ borders: noBorders, width: { size: 400, type: WidthType.DXA }, shading: { fill, type: ShadingType.CLEAR }, margins: { top: 60, bottom: 60, left: 80, right: 40 }, children: [new Paragraph({ children: [new TextRun({ text: `${d.bokstav})`, bold: true, size: 24, color: C.primary, font: 'Calibri' })] })] }),
+                new TableCell({ borders: { right: { style: BorderStyle.SINGLE, size: 4, color: C.bgGray } }, width: { size: 4000, type: WidthType.DXA }, shading: { fill, type: ShadingType.CLEAR }, margins: { top: 60, bottom: 60, left: 60, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: d.tekst, size: 22, font: 'Calibri' })] })] }),
+                new TableCell({ borders: noBorders, width: { size: 4600, type: WidthType.DXA }, shading: { fill: C.bgGray, type: ShadingType.CLEAR }, margins: { top: 60, bottom: 60, left: 120, right: 60 }, children: [new Paragraph({ children: [new TextRun({ text: '→  ___________________________', size: 22, color: 'AAAAAA', font: 'Calibri' })] })] }),
+              ]})],
+            }),
+            new Paragraph({ spacing: { after: 20 }, children: [] })
+          );
+        } else {
+          // fyll_inn, ordstilling, korriger: standard to-kolonne layout
+          grammatikkBlock.push(
+            new Table({
+              width: { size: 9000, type: WidthType.DXA },
+              columnWidths: [800, 8200],
+              rows: [new TableRow({ children: [
+                new TableCell({ borders: noBorders, width: { size: 800, type: WidthType.DXA }, shading: { fill, type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 120, right: 60 }, children: [new Paragraph({ children: [new TextRun({ text: `${d.bokstav})`, bold: true, size: 24, color: C.primary, font: 'Calibri' })] })] }),
+                new TableCell({ borders: noBorders, width: { size: 8200, type: WidthType.DXA }, shading: { fill, type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 60, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: d.tekst, size: 24, font: 'Calibri' })] }), svarLinje()] }),
+              ]})],
+            }),
+            new Paragraph({ spacing: { after: 20 }, children: [] })
+          );
+        }
+      });
+
+      // Fasit-seksjon (sammenleggbar visuelt – grå bakgrunn)
+      grammatikkBlock.push(
+        new Paragraph({
+          spacing: { before: 120, after: 0 },
+          shading: { fill: C.bgGray, type: ShadingType.CLEAR },
+          children: [new TextRun({ text: '  🔑 Fasit  ', bold: true, size: 20, color: C.textMid, font: 'Calibri' })],
+        })
+      );
+      oppg.delopgaver.forEach((d) => {
+        const fasitTekst = oppg.type === 'matching'
+          ? `${d.bokstav}) ${d.tekst}  →  ${d.match}`
+          : `${d.bokstav}) ${d.fasit}`;
+        grammatikkBlock.push(
+          new Paragraph({
+            spacing: { before: 20, after: 20 },
+            shading: { fill: C.bgGray, type: ShadingType.CLEAR },
+            indent: { left: 360 },
+            children: [new TextRun({ text: fasitTekst, size: 20, color: C.textMid, font: 'Calibri', italics: true })],
+          })
+        );
+      });
+      grammatikkBlock.push(new Paragraph({ spacing: { after: 120 }, children: [] }));
+    });
+  }
+
   const doc = new Document({
     numbering: { config: [{ reference: 'bullets', levels: [{ level: 0, format: LevelFormat.BULLET, text: '•', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] }] },
     styles: {
@@ -706,7 +950,7 @@ async function buildDocx(data, hjelpesprak, plassering, bildeObj) {
           ],
         })] }),
       },
-      children: [...titleBlock, ...introBlock, ...seksjonerBlock, ...ordlisteBlock, ...extraOrdliste],
+      children: [...titleBlock, ...introBlock, ...seksjonerBlock, ...grammatikkBlock, ...ordlisteBlock, ...extraOrdliste],
     }],
   });
 
@@ -1031,7 +1275,7 @@ app.post('/api/logginn', (req, res) => {
 // ─── Generer endpoint ──────────────────────────────────────────────────────────
 app.post('/api/generer', async (req, res) => {
   try {
-    const { yrke, niva, sprak, plassering, fokus, passord } = req.body;
+    const { yrke, niva, sprak, plassering, fokus, grammatikkFokus, passord } = req.body;
     if (!yrke || !niva) return res.status(400).json({ feil: 'Yrke og nivå er påkrevd.' });
 
     const riktig = process.env.APP_PASSORD;
@@ -1083,8 +1327,24 @@ app.post('/api/generer', async (req, res) => {
     // Hent bilde fra Pixabay (returnerer { buf, kreditt } eller null)
     const bildeObj = await hentBildeBuf(yrke);
 
+    // Generer grammatikkblokk separat om ønsket
+    let grammatikkData = null;
+    const gFokus = (grammatikkFokus || 'ingen').trim();
+    if (gFokus !== 'ingen') {
+      console.log(`Genererer grammatikkblokk: "${gFokus}"`);
+      try {
+        const gRaw = await callGemini(buildGrammatikkPrompt(yrke, niva, gFokus));
+        const gClean = gRaw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
+        grammatikkData = JSON.parse(gClean);
+        console.log(`Grammatikkblokk generert: ${grammatikkData.tema}`);
+      } catch (e) {
+        console.error('Grammatikk-generering feilet:', e.message);
+        // Fortsetter uten grammatikkblokk
+      }
+    }
+
     const [docxBuf, pptxBuf] = await Promise.all([
-      buildDocx(data, sprak, plassering, bildeObj),
+      buildDocx(data, sprak, plassering, bildeObj, grammatikkData),
       buildPptx(data, yrke, niva, sprak, fokus, bildeObj),
     ]);
 
