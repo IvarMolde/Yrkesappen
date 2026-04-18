@@ -221,6 +221,32 @@
     }
     .info-box strong { color: var(--primary); }
 
+    /* ── Grammatikk-valg ──────────────────────────────────── */
+    .grammatikk-valg {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .75rem;
+      margin-top: .5rem;
+    }
+    @media (max-width: 600px) {
+      .grammatikk-valg { grid-template-columns: 1fr; }
+    }
+    .gram-btn {
+      display: flex; flex-direction: column; align-items: center;
+      gap: .3rem; padding: .9rem .7rem;
+      background: var(--white); border: 2px solid var(--bgGray);
+      border-radius: 10px; cursor: pointer; font-family: inherit;
+      text-align: center; transition: all .2s;
+    }
+    .gram-btn:hover { border-color: var(--secondary); background: #f0fafa; }
+    .gram-btn.active {
+      border-color: var(--primary); background: #e6f4f6;
+      box-shadow: 0 0 0 3px rgba(0,95,115,.12);
+    }
+    .gram-ikon { font-size: 1.5rem; line-height: 1; }
+    .gram-label { font-size: .88rem; font-weight: 700; color: var(--textDark); }
+    .gram-sub { font-size: .75rem; color: var(--textMid); font-style: italic; }
+
     /* ── Footer ───────────────────────────────────────────── */
     footer {
       text-align: center;
@@ -393,9 +419,48 @@
     </div>
   </div>
 
+  <!-- Steg 5: Grammatikkfokus -->
+  <div class="card">
+    <h3><span class="step">5</span> Grammatikkfokus (valgfritt)</h3>
+    <label for="grammatikkValg" style="font-weight:600;font-size:.9rem;color:var(--textMid);margin-bottom:.5rem;display:block;">
+      Velg type grammatikkoppgaver til slutt i heftet:
+    </label>
+    <div class="grammatikk-valg" id="grammatikkValg">
+      <button class="gram-btn active" data-valg="ingen" onclick="velgGrammatikk(this)">
+        <span class="gram-ikon">🚫</span>
+        <span class="gram-label">Ingen grammatikkoppgaver</span>
+      </button>
+      <button class="gram-btn" data-valg="tilfeldig" onclick="velgGrammatikk(this)">
+        <span class="gram-ikon">🎲</span>
+        <span class="gram-label">Tilfeldige grammatikkoppgaver</span>
+        <span class="gram-sub">Basert på CEFR-nivå</span>
+      </button>
+      <button class="gram-btn" data-valg="egendefinert" onclick="velgGrammatikk(this)">
+        <span class="gram-ikon">✏️</span>
+        <span class="gram-label">Velg grammatikkfokus selv</span>
+        <span class="gram-sub">F.eks. preteritum, V2-regelen…</span>
+      </button>
+    </div>
+
+    <div id="grammatikkEgendefinert" style="display:none;margin-top:1rem;">
+      <label for="grammatikkInput" style="font-weight:600;font-size:.9rem;color:var(--textMid);margin-bottom:.4rem;display:block;">
+        Beskriv grammatikkfokus:
+      </label>
+      <input type="text" id="grammatikkInput"
+        placeholder="F.eks: preteritum av sterke verb, V2-regelen, adjektivbøyning…"
+        style="width:100%;padding:.7rem 1rem;font-size:.95rem;border:2px solid var(--bgGray);border-radius:8px;font-family:inherit;outline:none;transition:border-color .2s;"
+        onfocus="this.style.borderColor='var(--secondary)'"
+        onblur="this.style.borderColor='var(--bgGray)'"
+      />
+      <div class="info-box" style="margin-top:.8rem;">
+        <strong>Tips:</strong> Skriv ett grammatisk tema, f.eks. <em>«preteritum»</em>, <em>«V2-regelen og inversjon»</em> eller <em>«adjektivbøyning i bestem og ubestem form»</em>. Heftet får da en grammatikkforklaring + 5 oppgaver (a–e) tilpasset nivå ${valgtNiva}.
+      </div>
+    </div>
+  </div>
+
   <!-- Generer-knapp -->
   <div class="card">
-    <h3><span class="step">5</span> Generer dokumenter</h3>
+    <h3><span class="step">6</span> Generer dokumenter</h3>
     <p style="font-size:.9rem;color:var(--textMid);margin-bottom:1rem;">
       Du får ett Word-arbeidshefte (.docx) og én PowerPoint-presentasjon (.pptx) lastet ned direkte.
       Genereringen tar ca. 20–40 sekunder.
@@ -412,6 +477,18 @@
 
 <script>
   let valgtNiva = null;
+  let valgtGrammatikk = 'ingen'; // 'ingen' | 'tilfeldig' | 'egendefinert'
+
+  function velgGrammatikk(btn) {
+    document.querySelectorAll('.gram-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    valgtGrammatikk = btn.dataset.valg;
+    const egendefinert = document.getElementById('grammatikkEgendefinert');
+    egendefinert.style.display = valgtGrammatikk === 'egendefinert' ? 'block' : 'none';
+    if (valgtGrammatikk !== 'egendefinert') {
+      document.getElementById('grammatikkInput').value = '';
+    }
+  }
 
   // CEFR-knapper
   document.querySelectorAll('.niva-btn').forEach(btn => {
@@ -447,9 +524,16 @@
     const sprak = sprakInput.value.trim();
     const plassering = plasseringSelect.value;
     const fokus = document.getElementById('fokusInput').value.trim();
+    const grammatikkFokus = valgtGrammatikk === 'egendefinert'
+      ? document.getElementById('grammatikkInput').value.trim()
+      : valgtGrammatikk; // 'ingen' eller 'tilfeldig'
 
     if (!yrke) { visStatus('⚠️ Skriv inn et yrke.', 'error'); return; }
     if (!valgtNiva) { visStatus('⚠️ Velg et norsknivå (A1, A2, B1 eller B2).', 'error'); return; }
+    if (valgtGrammatikk === 'egendefinert' && !grammatikkFokus) {
+      visStatus('⚠️ Skriv inn grammatikkfokus, eller velg «Ingen» eller «Tilfeldig».', 'error');
+      return;
+    }
 
     const btn = document.getElementById('genBtn');
     btn.disabled = true;
@@ -466,6 +550,7 @@
           sprak: sprak || 'ingen',
           plassering: sprak ? plassering : 'ingen',
           fokus: fokus || '',
+          grammatikkFokus: grammatikkFokus || 'ingen',
           passord: sessionStorage.getItem('yrkesappen_pw') || '',
         }),
       });
