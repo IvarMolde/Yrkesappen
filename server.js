@@ -531,15 +531,15 @@ async function hentBildeBuf(yrke) {
 
     if (bilder.length > 0) {
       console.log(`✅ Fant ${bilder.length} bilder for "${sokeord}"`);
-      // Velg tilfeldig blant topp 5 for variasjon
       const bilde = bilder[Math.floor(Math.random() * Math.min(bilder.length, 5))];
+      // Anbefalt format jfr. Pixabay: «by [Contributor] via Pixabay»
+      // pageURL fra API-svaret gir direkte lenke til originalbildet på Pixabay
       const kreditt = {
-        fotograf: bilde.user || 'Ukjent',
-        kilde: 'Pixabay',
-        url: `https://pixabay.com/photos/${bilde.id}/`,
-        lisens: 'Pixabay-lisens',
+        fotograf:  bilde.user      || 'Ukjent',
+        pageURL:   bilde.pageURL   || `https://pixabay.com/photos/${bilde.id}/`,
+        kortTekst: `${bilde.user || 'Ukjent'} via Pixabay`,
       };
-      console.log(`Kreditt: ${kreditt.fotograf} / Pixabay`);
+      console.log(`Kreditt: ${kreditt.kortTekst} | ${kreditt.pageURL}`);
       console.log(`Størrelse: ${bilde.imageWidth}×${bilde.imageHeight}px`);
 
       return new Promise((resolve) => lastNedBildeUrl(bilde.largeImageURL, kreditt, resolve));
@@ -695,7 +695,7 @@ async function buildDocx(data, hjelpesprak, plassering, bildeObj, grammatikkData
       new Paragraph({
         spacing: { before: 30, after: 0 },
         children: [new TextRun({
-          text: `📷 Foto: ${kreditt.fotograf} / ${kreditt.kilde} (${kreditt.lisens})`,
+          text: `📷 ${kreditt.kortTekst}  –  ${kreditt.pageURL}`,
           size: 16, italics: true, color: C.textMid, font: 'Calibri',
         })],
       }),
@@ -1055,7 +1055,7 @@ async function buildPptx(data, yrke, niva, hjelpesprak, fokus, bildeObj) {
     s.addText('Molde voksenopplæringssenter – MBO', { x: 0.5, y: 3.55, w: 9, h: 0.4, fontSize: 13, color: C.bgGray, fontFace: 'Calibri', align: 'center', valign: 'middle', margin: 0 });
     if (hasFokus) s.addText(`Fokus: ${fokus}`, { x: 1.5, y: 4.1, w: 7, h: 0.5, fontSize: 13, italic: true, color: C.accent, fontFace: 'Calibri', align: 'center', valign: 'middle', wrap: true, shrinkText: true, margin: 4 });
     if (bildeData && kreditt) {
-      s.addText(`📷 ${kreditt.fotograf} / ${kreditt.kilde}`, {
+      s.addText(`📷 ${kreditt.kortTekst}`, {
         x: 5.5, y: 5.05, w: 4.3, h: 0.32,
         fontSize: 8, italic: true, color: 'DDDDDD', fontFace: 'Calibri',
         align: 'right', valign: 'middle', margin: 0,
@@ -1118,7 +1118,7 @@ async function buildPptx(data, yrke, niva, hjelpesprak, fokus, bildeObj) {
       });
       safeText(s, yrke, 6.35, 4.72, 3.35, 0.65, { bold: true, color: C.white, fontSize: 15, align: 'center', valign: 'middle', margin: 4 });
       if (kreditt) {
-        s.addText(`📷 ${kreditt.fotograf} / ${kreditt.kilde}`, {
+        s.addText(`📷 ${kreditt.kortTekst}`, {
           x: 6.3, y: 5.42, w: panelW, h: 0.2,
           fontSize: 7, italic: true, color: C.textMid, fontFace: 'Calibri',
           align: 'center', valign: 'middle', margin: 0,
@@ -1324,24 +1324,29 @@ app.post('/api/generer', async (req, res) => {
     }
     if (data.intro) data.intro = rettForbokstav(data.intro, yrke);
 
-    // Hent bilde fra Pixabay (returnerer { buf, kreditt } eller null)
-    const bildeObj = await hentBildeBuf(yrke);
-
-    // Generer grammatikkblokk separat om ønsket
-    let grammatikkData = null;
+    // Hent bilde og generer grammatikk parallelt for å spare tid
     const gFokus = (grammatikkFokus || 'ingen').trim();
-    if (gFokus !== 'ingen') {
-      console.log(`Genererer grammatikkblokk: "${gFokus}"`);
-      try {
-        const gRaw = await callGemini(buildGrammatikkPrompt(yrke, niva, gFokus));
-        const gClean = gRaw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
-        grammatikkData = JSON.parse(gClean);
-        console.log(`Grammatikkblokk generert: ${grammatikkData.tema}`);
-      } catch (e) {
-        console.error('Grammatikk-generering feilet:', e.message);
-        // Fortsetter uten grammatikkblokk
-      }
-    }
+
+    const [bildeObj, grammatikkData] = await Promise.all([
+      // Bilde fra Pixabay
+      hentBildeBuf(yrke),
+
+      // Grammatikkblokk (kun hvis ønsket)
+      (async () => {
+        if (gFokus === 'ingen') return null;
+        console.log(`Genererer grammatikkblokk: "${gFokus}"`);
+        try {
+          const gRaw = await callGemini(buildGrammatikkPrompt(yrke, niva, gFokus));
+          const gClean = gRaw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
+          const gData = JSON.parse(gClean);
+          console.log(`Grammatikkblokk generert: ${gData.tema}`);
+          return gData;
+        } catch (e) {
+          console.error('Grammatikk-generering feilet:', e.message);
+          return null;
+        }
+      })(),
+    ]);
 
     const [docxBuf, pptxBuf] = await Promise.all([
       buildDocx(data, sprak, plassering, bildeObj, grammatikkData),
