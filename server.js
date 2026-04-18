@@ -399,6 +399,66 @@ Svar KUN med gyldig JSON, ingen markdown:
 
 
 
+// ─── Normalisér yrkenavn via Gemini ───────────────────────────────────────────
+async function normaliserYrke(yrke) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  const input = yrke.toLowerCase().trim();
+  if (!apiKey) return { yrke: input, korrigert: false };
+
+  const prompt = `Du er en norsk rettskrivingsekspert. En bruker har skrevet inn et yrkenavn på norsk bokmål.
+
+Brukerens input: "${input}"
+
+Gjør følgende:
+1. Korriger eventuelle stavefeil til korrekt norsk bokmål
+2. Yrkestitler skal ALLTID ha liten forbokstav (f.eks. «sykepleier», ikke «Sykepleier»)
+3. Hvis input allerede er korrekt, returner det uendret
+
+Svar KUN med JSON, ingen annen tekst:
+{ "yrke": "korrigert yrkenavn", "endret": true/false }
+
+Eksempler:
+"Sykepleier" → { "yrke": "sykepleier", "endret": true }
+"sykeplier" → { "yrke": "sykepleier", "endret": true }
+"elektrikar" → { "yrke": "elektriker", "endret": true }
+"kokk" → { "yrke": "kokk", "endret": false }
+"begraffelsesagent" → { "yrke": "begravelsesagent", "endret": true }`;
+
+  return new Promise((resolve) => {
+    const body = JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 50 },
+    });
+    const options = {
+      hostname: 'generativelanguage.googleapis.com',
+      path: `/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+    };
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          let tekst = parsed.candidates[0].content.parts[0].text.trim()
+            .replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
+          const result = JSON.parse(tekst);
+          const korrigert = (result.yrke || input).toLowerCase().trim();
+          console.log(`Yrke: "${input}" → "${korrigert}" (endret: ${result.endret})`);
+          resolve({ yrke: korrigert, korrigert: result.endret === true && korrigert !== input });
+        } catch (e) {
+          console.error('Normalisering feilet:', e.message);
+          resolve({ yrke: input, korrigert: false });
+        }
+      });
+    });
+    req.on('error', () => resolve({ yrke: input, korrigert: false }));
+    req.write(body);
+    req.end();
+  });
+}
+
 async function lagSokestrategier(yrke) {
   // Ber Gemini om FLERE søkealternativer, rangert fra mest til minst spesifikt.
   // Dette løser problemet med sjeldne yrker som «begravelsesagent».
@@ -1281,7 +1341,11 @@ app.post('/api/generer', async (req, res) => {
     const riktig = process.env.APP_PASSORD;
     if (riktig && passord !== riktig) return res.status(401).json({ feil: 'Ikke autorisert. Logg inn på nytt.' });
 
-    const raw = await callGemini(buildPrompt(yrke, niva, sprak, plassering, fokus));
+    // Normalisér og korriger yrkenavnet (stavefeil + liten forbokstav)
+    const { yrke: yrkeNormalisert, korrigert: yrkeKorrigert } = await normaliserYrke(yrke);
+    console.log(`Yrke brukt i generering: "${yrkeNormalisert}"`);
+
+    const raw = await callGemini(buildPrompt(yrkeNormalisert, niva, sprak, plassering, fokus));
     const clean = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
 
     let data;
@@ -1293,50 +1357,42 @@ app.post('/api/generer', async (req, res) => {
     }
 
     // ── Sikkerhetsnett: rett opp stor forbokstav på yrkestittel ───────────────
-    // Norsk rettskriving: yrkestitler har liten forbokstav inne i setninger.
-    // Gemini bruker av og til stor forbokstav pga. engelsk påvirkning.
-    // Vi erstatter alle forekomster av yrket med stor forbokstav (ikke ved setningsstart).
-    function rettForbokstav(tekst, yrke) {
-      if (!tekst || !yrke) return tekst;
-      const stor = yrke.charAt(0).toUpperCase() + yrke.slice(1);
-      const liten = yrke.charAt(0).toLowerCase() + yrke.slice(1);
-      // Matcher yrket + vanlige norske bøyningsendelser, ikke ved setningsstart
+    function rettForbokstav(tekst, y) {
+      if (!tekst || !y) return tekst;
+      const stor = y.charAt(0).toUpperCase() + y.slice(1);
+      const liten = y.charAt(0).toLowerCase() + y.slice(1);
       return tekst.replace(
         new RegExp(`(?<![.!?]\\s)(?<!^)\\b${stor}(en|er|ene|ens|s)?\\b`, 'g'),
         (match, ending) => liten + (ending || '')
       );
     }
 
-    // Anvend på alle tekstfelter i seksjoner
     if (data.seksjoner) {
       data.seksjoner = data.seksjoner.map(s => {
-        if (s.innhold) s.innhold = rettForbokstav(s.innhold, yrke);
-        if (s.tittel)  s.tittel  = rettForbokstav(s.tittel,  yrke);
-        if (s.instruksjon) s.instruksjon = rettForbokstav(s.instruksjon, yrke);
+        if (s.innhold) s.innhold = rettForbokstav(s.innhold, yrkeNormalisert);
+        if (s.tittel)  s.tittel  = rettForbokstav(s.tittel,  yrkeNormalisert);
+        if (s.instruksjon) s.instruksjon = rettForbokstav(s.instruksjon, yrkeNormalisert);
         if (s.delopgaver) {
           s.delopgaver = s.delopgaver.map(d => ({
             ...d,
-            tekst: rettForbokstav(d.tekst, yrke),
+            tekst: rettForbokstav(d.tekst, yrkeNormalisert),
           }));
         }
         return s;
       });
     }
-    if (data.intro) data.intro = rettForbokstav(data.intro, yrke);
+    if (data.intro) data.intro = rettForbokstav(data.intro, yrkeNormalisert);
 
-    // Hent bilde og generer grammatikk parallelt for å spare tid
+    // Hent bilde og generer grammatikk parallelt
     const gFokus = (grammatikkFokus || 'ingen').trim();
 
     const [bildeObj, grammatikkData] = await Promise.all([
-      // Bilde fra Pixabay
-      hentBildeBuf(yrke),
-
-      // Grammatikkblokk (kun hvis ønsket)
+      hentBildeBuf(yrkeNormalisert),
       (async () => {
         if (gFokus === 'ingen') return null;
         console.log(`Genererer grammatikkblokk: "${gFokus}"`);
         try {
-          const gRaw = await callGemini(buildGrammatikkPrompt(yrke, niva, gFokus));
+          const gRaw = await callGemini(buildGrammatikkPrompt(yrkeNormalisert, niva, gFokus));
           const gClean = gRaw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
           const gData = JSON.parse(gClean);
           console.log(`Grammatikkblokk generert: ${gData.tema}`);
@@ -1350,15 +1406,16 @@ app.post('/api/generer', async (req, res) => {
 
     const [docxBuf, pptxBuf] = await Promise.all([
       buildDocx(data, sprak, plassering, bildeObj, grammatikkData),
-      buildPptx(data, yrke, niva, sprak, fokus, bildeObj),
+      buildPptx(data, yrkeNormalisert, niva, sprak, fokus, bildeObj),
     ]);
 
-    const safeName = yrke.replace(/[^a-zA-ZæøåÆØÅ0-9\-]/g, '_');
+    const safeName = yrkeNormalisert.replace(/[^a-zA-ZæøåÆØÅ0-9\-]/g, '_');
     res.json({
       docx: docxBuf.toString('base64'),
       pptx: pptxBuf.toString('base64'),
       filnavn: safeName,
-      niva: niva,
+      niva,
+      yrkeKorrigert: yrkeKorrigert ? yrkeNormalisert : null,
     });
 
   } catch (err) {
