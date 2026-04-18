@@ -359,7 +359,13 @@
   <div class="card">
     <h3><span class="step">1</span> Velg yrke</h3>
     <label for="yrkeInput">Skriv inn yrke (f.eks. sykepleier, kokk, elektriker)</label>
-    <input type="text" id="yrkeInput" placeholder="Yrke…" autocomplete="off" />
+    <div style="position:relative;">
+      <input type="text" id="yrkeInput" placeholder="Yrke…" autocomplete="off"
+             oninput="normaliserYrke(this)"
+             style="text-transform:lowercase;" />
+      <span id="yrkeKorrigert" style="display:none;position:absolute;right:.8rem;top:50%;transform:translateY(-50%);font-size:.8rem;color:var(--secondary);font-style:italic;pointer-events:none;">✔ korrigert</span>
+    </div>
+    <div id="yrkeHint" style="display:none;margin-top:.4rem;font-size:.82rem;color:var(--textMid);font-style:italic;"></div>
   </div>
 
   <!-- Steg 2: Norsknivå -->
@@ -477,7 +483,16 @@
 
 <script>
   let valgtNiva = null;
-  let valgtGrammatikk = 'ingen'; // 'ingen' | 'tilfeldig' | 'egendefinert'
+  let valgtGrammatikk = 'ingen';
+
+  // Tving liten forbokstav mens brukeren skriver
+  function normaliserYrke(input) {
+    const pos = input.selectionStart;
+    input.value = input.value.toLowerCase();
+    input.setSelectionRange(pos, pos);
+    document.getElementById('yrkeKorrigert').style.display = 'none';
+    document.getElementById('yrkeHint').style.display = 'none';
+  } // 'ingen' | 'tilfeldig' | 'egendefinert'
 
   function velgGrammatikk(btn) {
     document.querySelectorAll('.gram-btn').forEach(b => b.classList.remove('active'));
@@ -562,6 +577,16 @@
 
       const data = await resp.json();
       if (data.feil) throw new Error(data.feil);
+
+      // Vis korrigert yrkenavn tilbake til brukeren hvis det ble endret
+      if (data.yrkeKorrigert && data.yrkeKorrigert !== yrke) {
+        const input = document.getElementById('yrkeInput');
+        input.value = data.yrkeKorrigert;
+        document.getElementById('yrkeKorrigert').style.display = 'inline';
+        document.getElementById('yrkeHint').style.display = 'block';
+        document.getElementById('yrkeHint').textContent =
+          `«${yrke}» ble korrigert til «${data.yrkeKorrigert}»`;
+      }
 
       // Last ned Word-fil
       const docxBlob = new Blob(
