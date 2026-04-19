@@ -34,7 +34,8 @@ function callGemini(prompt) {
 
     const body = JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
+      // 16384 gir nok rom for B1/B2 + grammatikk + struktur uten å kutte av
+      generationConfig: { temperature: 0.7, maxOutputTokens: 16384 },
     });
 
     const options = {
@@ -54,12 +55,26 @@ function callGemini(prompt) {
         try {
           const parsed = JSON.parse(data);
           if (parsed.error) return reject(new Error(parsed.error.message));
-          const text = parsed.candidates[0].content.parts[0].text;
+          const candidate = parsed.candidates && parsed.candidates[0];
+          if (!candidate) return reject(new Error('Tomt Gemini-svar'));
+
+          // Kritisk: sjekk finishReason – MAX_TOKENS betyr at svaret ble kuttet av
+          if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+            console.error(`⚠️ Gemini finishReason: ${candidate.finishReason} – svaret kan være ufullstendig`);
+          }
+
+          const text = candidate.content && candidate.content.parts && candidate.content.parts[0] && candidate.content.parts[0].text;
+          if (!text) return reject(new Error('Ingen tekst i Gemini-svar'));
           resolve(text);
         } catch (e) {
           reject(new Error('Kunne ikke tolke svar fra Gemini: ' + data.slice(0, 200)));
         }
       });
+    });
+    // Timeout: maks 45 sekunder for Gemini-kall (Vercel Pro gir 60s, gratis 10s)
+    req.setTimeout(45000, () => {
+      req.destroy();
+      reject(new Error('Gemini-kall timet ut etter 45 sekunder'));
     });
     req.on('error', reject);
     req.write(body);
@@ -427,7 +442,7 @@ Eksempler:
   return new Promise((resolve) => {
     const body = JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 50 },
+      generationConfig: { temperature: 0.1, maxOutputTokens: 150 },
     });
     const options = {
       hostname: 'generativelanguage.googleapis.com',
@@ -483,7 +498,7 @@ Example: ["nurse patient hospital", "medical care nursing", "healthcare professi
 
     const body = JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 100 },
+      generationConfig: { temperature: 0.2, maxOutputTokens: 200 },
     });
 
     const options = {
