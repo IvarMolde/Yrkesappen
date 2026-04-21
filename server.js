@@ -897,7 +897,7 @@ async function buildPptx(data, yrke, niva, hjelpesprak, fokus) {
     s.addShape(pres.shapes.RECTANGLE, { x: 0.5, y: 1.2, w: 9, h: 2.5, fill: { color: '000000', transparency: 45 }, line: { color: '000000', transparency: 45 } });
     s.addText(yrke.toUpperCase(), { x: 0.5, y: 1.3, w: 9, h: 1.5, fontSize: 44, bold: true, color: C.white, fontFace: 'Calibri', align: 'center', valign: 'middle', wrap: true, shrinkText: true, margin: 8 });
     s.addText(`Norsknivå ${niva}`, { x: 0.5, y: 2.85, w: 9, h: 0.5, fontSize: 20, color: C.accent, fontFace: 'Calibri', align: 'center', valign: 'middle', margin: 0 });
-    s.addText('Molde voksenopplæringssenter – MBO', { x: 0.5, y: 3.55, w: 9, h: 0.4, fontSize: 13, color: C.bgGray, fontFace: 'Calibri', align: 'center', valign: 'middle', margin: 0 });
+    s.addText('Molde voksenopplæringssenter – MBO', { x: 0.5, y: 3.95, w: 9, h: 0.4, fontSize: 13, color: C.bgGray, fontFace: 'Calibri', align: 'center', valign: 'middle', margin: 0 });
     if (hasFokus) s.addText(`Fokus: ${fokus}`, { x: 1.5, y: 4.1, w: 7, h: 0.5, fontSize: 13, italic: true, color: C.accent, fontFace: 'Calibri', align: 'center', valign: 'middle', wrap: true, shrinkText: true, margin: 4 });
   }
 
