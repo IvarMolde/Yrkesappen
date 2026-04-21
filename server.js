@@ -490,15 +490,21 @@ Eksempler:
 
 async function lagSokestrategier(yrke) {
   // Returnerer søkestrategier + vektede tags + must-have tag + negative tags
+  // Ved feil: bruker yrket selv (transliterert) i stedet for generisk fallback
+  const fallbackStrategi = (yrkeNavn) => ({
+    strategier: [yrkeNavn, `${yrkeNavn} working`, `${yrkeNavn} job`],
+    mustHaveTags: [],
+    kjerneTags: [],
+    stotteTags: [],
+    negativeTags: ['cartoon', 'illustration', 'logo'],
+  });
+
   return new Promise((resolve) => {
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return resolve({
-      strategier: ['professional worker'],
-      mustHaveTags: [],
-      kjerneTags: [],
-      stotteTags: [],
-      negativeTags: [],
-    });
+    if (!apiKey) {
+      console.error('⚠️ GEMINI_API_KEY mangler – bruker yrkenavn som søk');
+      return resolve(fallbackStrategi(yrke));
+    }
 
     const prompt = `You are translating a Norwegian job title for image search on Pixabay.
 Norwegian job title: "${yrke}"
@@ -582,8 +588,24 @@ CRITICAL RULES:
       res.on('end', () => {
         try {
           const parsed = JSON.parse(data);
-          let tekst = parsed.candidates[0].content.parts[0].text.trim();
-          tekst = tekst.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
+          if (parsed.error) {
+            console.error('⚠️ Gemini-feil i strategier:', parsed.error.message);
+            return resolve(fallbackStrategi(yrke));
+          }
+          const candidate = parsed.candidates && parsed.candidates[0];
+          if (!candidate) {
+            console.error('⚠️ Tomt Gemini-svar i strategier');
+            return resolve(fallbackStrategi(yrke));
+          }
+          if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+            console.error(`⚠️ Strategi-finishReason: ${candidate.finishReason}`);
+          }
+          let tekst = candidate.content && candidate.content.parts && candidate.content.parts[0] && candidate.content.parts[0].text;
+          if (!tekst) {
+            console.error('⚠️ Ingen tekst i strategi-svar');
+            return resolve(fallbackStrategi(yrke));
+          }
+          tekst = tekst.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
           const result = JSON.parse(tekst);
 
           const strategier = Array.isArray(result.strategier) ? result.strategier : [];
@@ -605,16 +627,24 @@ CRITICAL RULES:
             console.log(`🚫 Negative tags:`, ut.negativeTags);
             resolve(ut);
           } else {
-            resolve({ strategier: ['professional worker'], mustHaveTags: [], kjerneTags: [], stotteTags: [], negativeTags: [] });
+            console.error('⚠️ Tom strategi-array – bruker fallback');
+            resolve(fallbackStrategi(yrke));
           }
         } catch (e) {
-          console.error('Søkestrategi-parsing feilet:', e.message);
-          resolve({ strategier: ['professional worker'], mustHaveTags: [], kjerneTags: [], stotteTags: [], negativeTags: [] });
+          console.error('⚠️ Strategi-parsing feilet:', e.message, '– bruker fallback');
+          resolve(fallbackStrategi(yrke));
         }
       });
     });
-    req.setTimeout(8000, () => { req.destroy(); resolve({ strategier: ['professional worker'], mustHaveTags: [], kjerneTags: [], stotteTags: [], negativeTags: [] }); });
-    req.on('error', () => resolve({ strategier: ['professional worker'], mustHaveTags: [], kjerneTags: [], stotteTags: [], negativeTags: [] }));
+    req.setTimeout(8000, () => {
+      console.error('⚠️ Strategi-kall timeout (8s) – bruker fallback');
+      req.destroy();
+      resolve(fallbackStrategi(yrke));
+    });
+    req.on('error', (e) => {
+      console.error('⚠️ Strategi-kall feilet:', e.message);
+      resolve(fallbackStrategi(yrke));
+    });
     req.write(body);
     req.end();
   });
