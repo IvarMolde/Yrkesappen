@@ -490,29 +490,54 @@ Eksempler:
 
 async function lagSokestrategier(yrke) {
   // Ber Gemini om FLERE søkealternativer, rangert fra mest til minst spesifikt.
-  // Dette løser problemet med sjeldne yrker som «begravelsesagent».
+  // Returnerer både engelske søkeord OG forventede tags for filtrering.
   return new Promise((resolve) => {
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return resolve(['professional worker', 'workplace people', 'working professional']);
+    if (!apiKey) return resolve({
+      strategier: ['professional worker', 'workplace people', 'working professional'],
+      forventedeTags: [],
+    });
 
-    const prompt = `You are helping find relevant photos for a Norwegian job title on Pixabay.
-Job title: "${yrke}"
+    const prompt = `You are translating a Norwegian job title for image search on Pixabay.
+Norwegian job title: "${yrke}"
 
-Give me 4 different English search queries for Pixabay, from most to least specific.
-Each query should be 1-3 words that describe what this worker LOOKS LIKE or DOES at work.
+Step 1: Identify the most accurate English equivalent of this profession.
+Examples:
+- "frisør" → "hairdresser" or "hair stylist"
+- "snekker" → "carpenter"
+- "rørlegger" → "plumber"
+- "elektriker" → "electrician"
+- "murer" → "bricklayer" or "mason"
+- "maler" → "painter" (house painter, not artist)
+- "begravelsesagent" → "funeral director" or "mortician"
+- "renholder" → "cleaner" or "janitor"
+- "kokk" → "chef" or "cook"
+- "barnehageassistent" → "kindergarten teacher" or "preschool teacher"
+
+Step 2: Generate search strategies and expected tags.
+
+Reply with ONLY valid JSON in this exact format:
+{
+  "strategier": [
+    "most specific search (e.g. 'hairdresser cutting hair')",
+    "specific workplace (e.g. 'hair salon woman')",
+    "general profession (e.g. 'hairdresser')",
+    "fallback (e.g. 'hair styling')"
+  ],
+  "forventedeTags": ["hairdresser", "salon", "hair", "haircut", "stylist"]
+}
 
 Rules:
-- Query 1: Most specific (e.g. "funeral director coffin" for begravelsesagent)
-- Query 2: Specific activity (e.g. "funeral service ceremony")
-- Query 3: Broader workplace setting (e.g. "mortician funeral home")
-- Query 4: General fallback (e.g. "professional service worker")
-
-Reply with ONLY a JSON array of 4 strings, nothing else.
-Example: ["nurse patient hospital", "medical care nursing", "healthcare professional", "medical worker"]`;
+- "strategier" must contain 4 English search queries from MOST to LEAST specific
+- Each query: 1-3 words describing what the worker does or where they work
+- "forventedeTags" must contain 5-8 English keywords that should appear in image tags
+- These tags are used to FILTER OUT irrelevant images (e.g. wrong profession)
+- Use the CORRECT English profession name – do not guess or use Norwegian words
+- If the Norwegian word looks similar to English (false friend), pick the actual meaning`;
 
     const body = JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 200 },
+      generationConfig: { temperature: 0.1, maxOutputTokens: 400 },
     });
 
     const options = {
@@ -529,22 +554,27 @@ Example: ["nurse patient hospital", "medical care nursing", "healthcare professi
         try {
           const parsed = JSON.parse(data);
           let tekst = parsed.candidates[0].content.parts[0].text.trim();
-          // Strip markdown fences if present
           tekst = tekst.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
-          const strategier = JSON.parse(tekst);
-          if (Array.isArray(strategier) && strategier.length > 0) {
-            console.log(`Søkestrategier for "${yrke}":`, strategier);
-            resolve(strategier);
+          const result = JSON.parse(tekst);
+          const strategier = Array.isArray(result.strategier) ? result.strategier : [];
+          const forventedeTags = Array.isArray(result.forventedeTags)
+            ? result.forventedeTags.map(t => t.toLowerCase()) : [];
+
+          if (strategier.length > 0) {
+            console.log(`📝 Søkestrategier for "${yrke}":`, strategier);
+            console.log(`🏷️  Forventede tags:`, forventedeTags);
+            resolve({ strategier, forventedeTags });
           } else {
-            resolve(['professional worker', 'office workplace', 'working people']);
+            resolve({ strategier: ['professional worker'], forventedeTags: [] });
           }
         } catch (e) {
           console.error('Søkestrategi-parsing feilet:', e.message);
-          resolve(['professional worker', 'office workplace', 'working people']);
+          resolve({ strategier: ['professional worker'], forventedeTags: [] });
         }
       });
     });
-    req.on('error', () => resolve(['professional worker', 'office workplace', 'working people']));
+    req.setTimeout(8000, () => { req.destroy(); resolve({ strategier: ['professional worker'], forventedeTags: [] }); });
+    req.on('error', () => resolve({ strategier: ['professional worker'], forventedeTags: [] }));
     req.write(body);
     req.end();
   });
@@ -554,11 +584,10 @@ function pixabaySOk(apiKey, sokeord, medKategori) {
   return new Promise((resolve) => {
     const q = encodeURIComponent(sokeord);
     const kategori = medKategori ? '&category=people' : '';
-    // MERK: largeImageURL krever godkjent full API-tilgang fra Pixabay.
-    // webformatURL (640px) er alltid tilgjengelig og god nok for dokumenter.
-    // Vi bruker IKKE response_group=high_resolution siden det gir 400-feil
-    // for kontoer uten godkjent full tilgang.
-    const path = `/api/?key=${apiKey}&q=${q}&image_type=photo&orientation=horizontal${kategori}&per_page=10&safesearch=true&order=popular`;
+    // min_width=1280 sikrer høy kvalitet
+    // editors_choice=true gir kun kvalitetskontrollerte bilder (færre, men bedre)
+    // Hvis ingen treff, faller hentBildeBuf tilbake til søk uten editors_choice
+    const path = `/api/?key=${apiKey}&q=${q}&image_type=photo&orientation=horizontal${kategori}&per_page=20&safesearch=true&min_width=1280`;
 
     const options = {
       hostname: 'pixabay.com',
@@ -573,15 +602,15 @@ function pixabaySOk(apiKey, sokeord, medKategori) {
       res.on('end', () => {
         try {
           if (res.statusCode !== 200) {
-            console.error(`Pixabay HTTP ${res.statusCode}:`, raw.slice(0, 200));
+            console.error(`  Pixabay HTTP ${res.statusCode}:`, raw.slice(0, 200));
             return resolve([]);
           }
           const json = JSON.parse(raw);
           const hits = json.hits || [];
-          console.log(`  Pixabay "${sokeord}" (people=${medKategori}): ${hits.length} treff`);
+          console.log(`  📸 Pixabay (people=${medKategori}): ${hits.length} treff`);
           resolve(hits);
         } catch (e) {
-          console.error('Pixabay parse-feil:', e.message);
+          console.error('  Pixabay parse-feil:', e.message);
           resolve([]);
         }
       });
@@ -589,7 +618,7 @@ function pixabaySOk(apiKey, sokeord, medKategori) {
     });
     req.setTimeout(6000, () => { req.destroy(); resolve([]); });
     req.on('error', (e) => {
-      console.error('Pixabay request-feil:', e.message);
+      console.error('  Pixabay request-feil:', e.message);
       resolve([]);
     });
     req.end();
@@ -681,45 +710,70 @@ async function hentBildeBuf(yrke) {
     return null;
   }
 
-  // Hent rangerte søkestrategier fra Gemini
-  const strategier = await lagSokestrategier(yrke);
+  // Hent rangerte søkestrategier OG forventede tags fra Gemini
+  const { strategier, forventedeTags } = await lagSokestrategier(yrke);
 
-  // Prøv strategiene i rekkefølge: først med category=people, så uten
-  // Stopp ved første som gir treff – da er bildet mest sannsynlig relevant
-  for (const sokeord of strategier) {
-    console.log(`Prøver Pixabay-søk: "${sokeord}" (med people-filter)`);
-    let bilder = await pixabaySOk(apiKey, sokeord, true);
-
-    if (!bilder.length) {
-      console.log(`Ingen treff med people-filter – prøver uten`);
-      bilder = await pixabaySOk(apiKey, sokeord, false);
-    }
-
-    if (bilder.length > 0) {
-      console.log(`✅ Fant ${bilder.length} bilder for "${sokeord}"`);
-      const bilde = bilder[Math.floor(Math.random() * Math.min(bilder.length, 5))];
-
-      const bildeUrlInfo = velgBildeUrl(bilde);
-      if (!bildeUrlInfo) {
-        console.log(`Ingen gyldig bilde-URL – prøver neste strategi`);
-        continue;
-      }
-
-      const kreditt = {
-        fotograf:  bilde.user    || 'Ukjent',
-        pageURL:   bilde.pageURL || `https://pixabay.com/photos/${bilde.id}/`,
-        kortTekst: `${bilde.user || 'Ukjent'} via Pixabay`,
-      };
-      console.log(`📸 Laster ned (${bildeUrlInfo.kvalitet}): ${kreditt.kortTekst}`);
-      console.log(`   Bilde: ${bilde.imageWidth}×${bilde.imageHeight}px`);
-
-      return new Promise((resolve) => lastNedBildeUrl(bildeUrlInfo.url, kreditt, resolve));
-    }
-
-    console.log(`Ingen treff for "${sokeord}" – prøver neste strategi`);
+  // Beregn relevans-score for et bilde basert på hvor mange forventede tags som matcher
+  function relevansScore(bilde) {
+    if (!forventedeTags.length) return 0;
+    const bildeTagsLower = (bilde.tags || '').toLowerCase();
+    return forventedeTags.filter(tag => bildeTagsLower.includes(tag)).length;
   }
 
-  console.log('Ingen bilder funnet etter alle strategier – fortsetter uten bilde');
+  // Vi prøver alle strategier først UTEN people-filter for å få flere kandidater,
+  // siden category=people ofte begrenser unødvendig.
+  for (const sokeord of strategier) {
+    console.log(`🔍 Pixabay-søk: "${sokeord}"`);
+    let bilder = await pixabaySOk(apiKey, sokeord, false);
+
+    // Hvis ingen treff, prøv med people-filter (for portrettbilder)
+    if (!bilder.length) {
+      console.log(`  Ingen treff – prøver med people-filter`);
+      bilder = await pixabaySOk(apiKey, sokeord, true);
+    }
+
+    if (bilder.length === 0) continue;
+
+    // Beregn relevans-score for hvert bilde
+    const skoredeBilder = bilder.map(b => ({
+      bilde: b,
+      score: relevansScore(b),
+    }));
+
+    // Sorter etter score (høyest først)
+    skoredeBilder.sort((a, b) => b.score - a.score);
+
+    const beste = skoredeBilder[0];
+    console.log(`  📊 Relevans-score: ${skoredeBilder.slice(0, 5).map(s => s.score).join(', ')}`);
+    console.log(`  🏷️  Beste tags: "${beste.bilde.tags}"`);
+
+    // Avvis hele resultatet hvis ingen bilder har minst 1 matchende tag
+    // (og vi har forventede tags definert)
+    if (forventedeTags.length > 0 && beste.score === 0) {
+      console.log(`  ⚠️  Ingen bilder matcher forventede tags – prøver neste strategi`);
+      continue;
+    }
+
+    // Velg beste relevante bilde
+    const bilde = beste.bilde;
+    const bildeUrlInfo = velgBildeUrl(bilde);
+    if (!bildeUrlInfo) {
+      console.log(`  Ingen gyldig bilde-URL – prøver neste strategi`);
+      continue;
+    }
+
+    const kreditt = {
+      fotograf:  bilde.user    || 'Ukjent',
+      pageURL:   bilde.pageURL || `https://pixabay.com/photos/${bilde.id}/`,
+      kortTekst: `${bilde.user || 'Ukjent'} via Pixabay`,
+    };
+    console.log(`✅ Valgt bilde (${bildeUrlInfo.kvalitet}, score=${beste.score}): ${kreditt.kortTekst}`);
+    console.log(`   Bilde: ${bilde.imageWidth}×${bilde.imageHeight}px`);
+
+    return new Promise((resolve) => lastNedBildeUrl(bildeUrlInfo.url, kreditt, resolve));
+  }
+
+  console.log('❌ Ingen relevante bilder funnet etter alle strategier');
   return null;
 }
 
