@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Yrkesappen – Molde voksenopplæringssenter</title>
   <style>
-    /* ── Reset & base ─────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --primary:   #005F73;
@@ -26,211 +25,109 @@
       min-height: 100vh;
     }
 
-    /* ── Header ───────────────────────────────────────────── */
-    header {
-      background: var(--primary);
-      color: var(--white);
-      padding: 0;
-    }
+    header { background: var(--primary); color: var(--white); padding: 0; }
     .header-inner {
-      max-width: 860px;
-      margin: 0 auto;
-      padding: 2rem 1.5rem 1.4rem;
-      text-align: center;
+      max-width: 860px; margin: 0 auto;
+      padding: 2rem 1.5rem 1.4rem; text-align: center;
     }
-    header h1 {
-      font-size: clamp(1.8rem, 4vw, 2.6rem);
-      font-weight: 800;
-      letter-spacing: -0.5px;
-    }
+    header h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800; letter-spacing: -0.5px; }
     header h2 {
-      font-size: clamp(1rem, 2.5vw, 1.25rem);
-      font-weight: 400;
-      color: var(--bgGray);
-      margin-top: .35rem;
+      font-size: clamp(1rem, 2.5vw, 1.25rem); font-weight: 400;
+      color: var(--bgGray); margin-top: .35rem;
     }
-    .header-accent {
-      height: 6px;
-      background: var(--accent);
-    }
+    .header-accent { height: 6px; background: var(--accent); }
 
-    /* ── Main layout ──────────────────────────────────────── */
     main {
-      max-width: 860px;
-      margin: 2.5rem auto;
+      max-width: 860px; margin: 2.5rem auto;
       padding: 0 1.5rem 4rem;
     }
 
-    /* ── Card ─────────────────────────────────────────────── */
     .card {
-      background: var(--white);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 2rem 2.2rem;
+      background: var(--white); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 2rem 2.2rem;
       margin-bottom: 1.5rem;
     }
     .card h3 {
-      font-size: 1.05rem;
-      font-weight: 700;
-      color: var(--primary);
-      margin-bottom: 1rem;
-      display: flex;
-      align-items: center;
-      gap: .5rem;
+      font-size: 1.05rem; font-weight: 700; color: var(--primary);
+      margin-bottom: 1rem; display: flex; align-items: center; gap: .5rem;
     }
     .card h3 .step {
-      background: var(--primary);
-      color: var(--white);
-      border-radius: 50%;
-      width: 28px; height: 28px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: .85rem;
-      font-weight: 700;
-      flex-shrink: 0;
+      background: var(--primary); color: var(--white);
+      border-radius: 50%; width: 28px; height: 28px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: .85rem; font-weight: 700; flex-shrink: 0;
     }
 
-    /* ── Form elements ────────────────────────────────────── */
     label {
-      display: block;
-      font-size: .9rem;
-      font-weight: 600;
-      color: var(--textMid);
-      margin-bottom: .4rem;
+      display: block; font-size: .9rem; font-weight: 600;
+      color: var(--textMid); margin-bottom: .4rem;
     }
     input[type="text"], select, textarea {
-      width: 100%;
-      padding: .7rem 1rem;
-      font-size: 1rem;
-      border: 2px solid var(--bgGray);
-      border-radius: 8px;
-      background: var(--bgLight);
-      color: var(--textDark);
-      transition: border-color .2s;
-      outline: none;
-      font-family: inherit;
+      width: 100%; padding: .7rem 1rem; font-size: 1rem;
+      border: 2px solid var(--bgGray); border-radius: 8px;
+      background: var(--bgLight); color: var(--textDark);
+      transition: border-color .2s; outline: none; font-family: inherit;
     }
-    textarea {
-      resize: vertical;
-      min-height: 80px;
-      line-height: 1.5;
-    }
+    textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
     input[type="text"]:focus, select:focus, textarea:focus {
-      border-color: var(--secondary);
-      background: var(--white);
+      border-color: var(--secondary); background: var(--white);
     }
 
-    /* ── CEFR grid ────────────────────────────────────────── */
-    .niva-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: .75rem;
-    }
+    .niva-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .75rem; }
     @media (min-width: 540px) { .niva-grid { grid-template-columns: repeat(4, 1fr); } }
     .niva-btn {
-      border: 2px solid var(--bgGray);
-      border-radius: 8px;
-      background: var(--white);
-      cursor: pointer;
-      padding: .75rem .5rem;
-      text-align: center;
-      transition: all .18s;
+      border: 2px solid var(--bgGray); border-radius: 8px;
+      background: var(--white); cursor: pointer;
+      padding: .75rem .5rem; text-align: center;
+      transition: all .18s; font-family: inherit;
     }
     .niva-btn:hover { border-color: var(--secondary); background: #f0fafa; }
     .niva-btn.active {
-      border-color: var(--primary);
-      background: var(--primary);
-      color: var(--white);
+      border-color: var(--primary); background: var(--primary); color: var(--white);
     }
-    .niva-btn .niva-kode {
-      display: block;
-      font-size: 1.4rem;
-      font-weight: 800;
-      line-height: 1;
-    }
+    .niva-btn .niva-kode { display: block; font-size: 1.4rem; font-weight: 800; line-height: 1; }
     .niva-btn .niva-desc {
-      display: block;
-      font-size: .72rem;
-      margin-top: .3rem;
-      color: inherit;
-      opacity: .75;
+      display: block; font-size: .72rem;
+      margin-top: .3rem; color: inherit; opacity: .75;
     }
-    .niva-btn.active .niva-desc { opacity: .85; }
 
-    /* ── Language option ──────────────────────────────────── */
-    .lang-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-    }
+    .lang-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
     @media (max-width: 480px) { .lang-row { grid-template-columns: 1fr; } }
 
-    /* ── Generate button ──────────────────────────────────── */
     #genBtn {
-      width: 100%;
-      padding: 1rem;
-      font-size: 1.1rem;
-      font-weight: 700;
-      background: var(--primary);
-      color: var(--white);
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background .2s, transform .1s;
-      letter-spacing: .3px;
+      width: 100%; padding: 1rem; font-size: 1.1rem; font-weight: 700;
+      background: var(--primary); color: var(--white);
+      border: none; border-radius: 8px; cursor: pointer;
+      transition: background .2s, transform .1s; letter-spacing: .3px;
     }
     #genBtn:hover:not(:disabled) { background: var(--secondary); }
-    #genBtn:active:not(:disabled) { transform: scale(.99); }
     #genBtn:disabled { opacity: .6; cursor: not-allowed; }
 
-    /* ── Status / feedback ────────────────────────────────── */
     #status {
-      margin-top: 1.2rem;
-      border-radius: 8px;
-      padding: .9rem 1.1rem;
-      font-size: .95rem;
-      display: none;
+      margin-top: 1.2rem; border-radius: 8px; padding: .9rem 1.1rem;
+      font-size: .95rem; display: none;
     }
     #status.info  { background: #e0f4f6; color: var(--primary); border: 1px solid #b2e0e7; }
     #status.ok    { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
     #status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
-    /* ── Spinner ──────────────────────────────────────────── */
     .spinner {
-      display: inline-block;
-      width: 18px; height: 18px;
+      display: inline-block; width: 18px; height: 18px;
       border: 3px solid rgba(255,255,255,.4);
-      border-top-color: var(--white);
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
-      vertical-align: middle;
-      margin-right: .5rem;
+      border-top-color: var(--white); border-radius: 50%;
+      animation: spin .7s linear infinite; vertical-align: middle; margin-right: .5rem;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Info box ─────────────────────────────────────────── */
     .info-box {
-      background: #e8f4f6;
-      border-left: 4px solid var(--secondary);
-      border-radius: 0 8px 8px 0;
-      padding: .9rem 1rem;
-      font-size: .88rem;
-      color: var(--textMid);
-      margin-top: 1rem;
+      background: #e8f4f6; border-left: 4px solid var(--secondary);
+      border-radius: 0 8px 8px 0; padding: .9rem 1rem;
+      font-size: .88rem; color: var(--textMid); margin-top: 1rem;
     }
     .info-box strong { color: var(--primary); }
 
-    /* ── Grammatikk-valg ──────────────────────────────────── */
-    .grammatikk-valg {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: .75rem;
-      margin-top: .5rem;
-    }
-    @media (max-width: 600px) {
-      .grammatikk-valg { grid-template-columns: 1fr; }
-    }
+    .grammatikk-valg { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin-top: .5rem; }
+    @media (max-width: 600px) { .grammatikk-valg { grid-template-columns: 1fr; } }
     .gram-btn {
       display: flex; flex-direction: column; align-items: center;
       gap: .3rem; padding: .9rem .7rem;
@@ -247,16 +144,51 @@
     .gram-label { font-size: .88rem; font-weight: 700; color: var(--textDark); }
     .gram-sub { font-size: .75rem; color: var(--textMid); font-style: italic; }
 
-    /* ── Footer ───────────────────────────────────────────── */
-    footer {
-      text-align: center;
-      font-size: .82rem;
-      color: var(--textMid);
-      padding: 1.5rem;
-      border-top: 1px solid var(--bgGray);
+    /* ── Format-valg etter generering ─────────────────────── */
+    #formatValg { display: none; }
+    .format-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 1rem; margin-top: 1rem;
+    }
+    @media (max-width: 700px) { .format-grid { grid-template-columns: 1fr; } }
+    .format-btn {
+      background: var(--white); border: 2px solid var(--bgGray);
+      border-radius: 12px; padding: 1.5rem 1rem; cursor: pointer;
+      font-family: inherit; text-align: center;
+      transition: all .2s; display: flex; flex-direction: column;
+      align-items: center; gap: .6rem;
+    }
+    .format-btn:hover:not(:disabled) {
+      border-color: var(--secondary); background: #f0fafa;
+      transform: translateY(-2px); box-shadow: var(--shadow);
+    }
+    .format-btn:disabled { opacity: .5; cursor: wait; }
+    .format-btn .ikon { font-size: 2.5rem; line-height: 1; }
+    .format-btn .navn { font-size: 1.05rem; font-weight: 700; color: var(--primary); }
+    .format-btn .besk { font-size: .82rem; color: var(--textMid); line-height: 1.4; }
+    .format-btn .lastet { color: var(--secondary); font-size: .8rem; font-weight: 600; }
+    .format-btn .spinner-mini {
+      width: 16px; height: 16px;
+      border: 3px solid var(--bgGray);
+      border-top-color: var(--secondary);
+      border-radius: 50%; animation: spin .7s linear infinite;
     }
 
-    /* ── Login overlay ────────────────────────────────────── */
+    .ny-runde-btn {
+      width: 100%; padding: .8rem; margin-top: 1rem;
+      background: var(--bgGray); color: var(--textDark);
+      border: none; border-radius: 8px; cursor: pointer;
+      font-family: inherit; font-size: .95rem; font-weight: 600;
+      transition: background .2s;
+    }
+    .ny-runde-btn:hover { background: #d8dce0; }
+
+    footer {
+      text-align: center; font-size: .82rem; color: var(--textMid);
+      padding: 1.5rem; border-top: 1px solid var(--bgGray);
+    }
+
+    /* Login overlay */
     #loginOverlay {
       position: fixed; inset: 0;
       background: var(--primary);
@@ -276,7 +208,7 @@
       margin-bottom: 1.2rem; font-size: 1.9rem;
     }
     .login-boks h2 { font-size: 1.4rem; font-weight: 800; color: var(--primary); margin-bottom: .3rem; }
-    .login-boks p  { font-size: .9rem; color: var(--textMid); margin-bottom: 1.6rem; }
+    .login-boks p { font-size: .9rem; color: var(--textMid); margin-bottom: 1.6rem; }
     .login-boks label { display: block; text-align: left; font-size: .85rem; font-weight: 600; color: var(--textMid); margin-bottom: .4rem; }
     .passord-wrapper { position: relative; margin-bottom: 1.2rem; }
     .passord-wrapper input {
@@ -289,9 +221,9 @@
     .passord-wrapper input:focus { border-color: var(--secondary); background: var(--white); }
     .vis-passord {
       position: absolute; right: .75rem; top: 50%;
-      transform: translateY(-50%);
-      background: none; border: none; cursor: pointer;
-      font-size: 1.1rem; color: var(--textMid); padding: 0; line-height: 1;
+      transform: translateY(-50%); background: none; border: none;
+      cursor: pointer; font-size: 1.1rem; color: var(--textMid);
+      padding: 0; line-height: 1;
     }
     #loggInnBtn {
       width: 100%; padding: .85rem; font-size: 1rem; font-weight: 700;
@@ -307,25 +239,16 @@
     }
     .login-footer { margin-top: 1.4rem; font-size: .78rem; color: var(--textMid); }
     #loggUtBtn {
-      display: block;
-      margin: 1rem auto 0;
-      background: var(--accent);
-      color: var(--textDark);
-      border: none;
-      padding: .55rem 1.8rem;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: .95rem;
-      font-weight: 700;
-      font-family: inherit;
-      transition: background .2s, transform .1s;
-      letter-spacing: .2px;
+      display: block; margin: 1rem auto 0;
+      background: var(--accent); color: var(--textDark);
+      border: none; padding: .55rem 1.8rem; border-radius: 8px;
+      cursor: pointer; font-size: .95rem; font-weight: 700;
+      font-family: inherit; transition: background .2s, transform .1s;
     }
     #loggUtBtn:hover { background: #f0b429; transform: scale(1.03); }
   </style>
 </head>
 <body>
-
 
 <div id="loginOverlay">
   <div class="login-boks">
@@ -355,124 +278,134 @@
 
 <main>
 
-  <!-- Steg 1: Yrke -->
-  <div class="card">
-    <h3><span class="step">1</span> Velg yrke</h3>
-    <label for="yrkeInput">Skriv inn yrke (f.eks. sykepleier, kokk, elektriker)</label>
-    <div style="position:relative;">
+  <div id="skjema">
+
+    <!-- Steg 1: Yrke -->
+    <div class="card">
+      <h3><span class="step">1</span> Velg yrke</h3>
+      <label for="yrkeInput">Skriv inn yrke (f.eks. sykepleier, kokk, elektriker)</label>
       <input type="text" id="yrkeInput" placeholder="Yrke…" autocomplete="off"
-             oninput="normaliserYrke(this)"
+             oninput="this.value = this.value.toLowerCase()"
              style="text-transform:lowercase;" />
-      <span id="yrkeKorrigert" style="display:none;position:absolute;right:.8rem;top:50%;transform:translateY(-50%);font-size:.8rem;color:var(--secondary);font-style:italic;pointer-events:none;">✔ korrigert</span>
+      <div id="yrkeHint" style="display:none;margin-top:.4rem;font-size:.82rem;color:var(--textMid);font-style:italic;"></div>
     </div>
-    <div id="yrkeHint" style="display:none;margin-top:.4rem;font-size:.82rem;color:var(--textMid);font-style:italic;"></div>
-  </div>
 
-  <!-- Steg 2: Norsknivå -->
-  <div class="card">
-    <h3><span class="step">2</span> Velg norsknivå (CEFR)</h3>
-    <div class="niva-grid" id="nivaGrid">
-      <button class="niva-btn" data-niva="A1">
-        <span class="niva-kode">A1</span>
-        <span class="niva-desc">Nybegynner<br>Svært enkle ord og setninger</span>
-      </button>
-      <button class="niva-btn" data-niva="A2">
-        <span class="niva-kode">A2</span>
-        <span class="niva-desc">Grunnleggende<br>Kjente situasjoner og enkle fraser</span>
-      </button>
-      <button class="niva-btn" data-niva="B1">
-        <span class="niva-kode">B1</span>
-        <span class="niva-desc">Selvstendig<br>Klarer seg i de fleste situasjoner</span>
-      </button>
-      <button class="niva-btn" data-niva="B2">
-        <span class="niva-kode">B2</span>
-        <span class="niva-desc">Avansert<br>Flytende om mange emner</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- Steg 3: Hjelpespråk -->
-  <div class="card">
-    <h3><span class="step">3</span> Hjelpespråk (valgfritt)</h3>
-    <div class="lang-row">
-      <div>
-        <label for="sprakInput">Morsmål / hjelpespråk</label>
-        <input type="text" id="sprakInput" placeholder="F.eks. somali, arabisk, polsk…" />
-      </div>
-      <div>
-        <label for="plasseringSelect">Plassering av oversettelse</label>
-        <select id="plasseringSelect">
-          <option value="ingen">Ingen oversettelse</option>
-          <option value="tosidig">Side om side (i teksten)</option>
-          <option value="slutt">Ordliste til slutt</option>
-        </select>
+    <!-- Steg 2: Norsknivå -->
+    <div class="card">
+      <h3><span class="step">2</span> Velg norsknivå (CEFR)</h3>
+      <div class="niva-grid" id="nivaGrid">
+        <button class="niva-btn" data-niva="A1">
+          <span class="niva-kode">A1</span>
+          <span class="niva-desc">Nybegynner</span>
+        </button>
+        <button class="niva-btn" data-niva="A2">
+          <span class="niva-kode">A2</span>
+          <span class="niva-desc">Grunnleggende</span>
+        </button>
+        <button class="niva-btn" data-niva="B1">
+          <span class="niva-kode">B1</span>
+          <span class="niva-desc">Selvstendig</span>
+        </button>
+        <button class="niva-btn" data-niva="B2">
+          <span class="niva-kode">B2</span>
+          <span class="niva-desc">Avansert</span>
+        </button>
       </div>
     </div>
-    <div class="info-box">
-      <strong>Tips:</strong> Velg «Ingen oversettelse» for å lage et rent norsk hefte.
-      «Side om side» viser oversettelse i parentes etter norske ord og setninger.
-      «Ordliste til slutt» samler alle oversettelsene i en tabell bakerst.
-    </div>
-  </div>
 
-  <!-- Steg 4: Faglig fokus -->
-  <div class="card">
-    <h3><span class="step">4</span> Faglig fokus (valgfritt)</h3>
-    <label for="fokusInput">Vil du at innholdet skal ha et spesielt fokus?</label>
-    <textarea id="fokusInput" placeholder="F.eks: Fokuser på verktøy og utstyr. / Legg vekt på kommunikasjon med pasienter. / Inkluder navn på vanlige medisiner. / Fokuser på personlige egenskaper som er viktige i dette yrket." rows="3"></textarea>
-    <div class="info-box">
-      <strong>Tips:</strong> Beskriv gjerne konkret hva du ønsker mer av — f.eks. spesifikke fagbegreper, situasjoner, verdier eller ferdigheter. Feltet er valgfritt.
-    </div>
-  </div>
-
-  <!-- Steg 5: Grammatikkfokus -->
-  <div class="card">
-    <h3><span class="step">5</span> Grammatikkfokus (valgfritt)</h3>
-    <label for="grammatikkValg" style="font-weight:600;font-size:.9rem;color:var(--textMid);margin-bottom:.5rem;display:block;">
-      Velg type grammatikkoppgaver til slutt i heftet:
-    </label>
-    <div class="grammatikk-valg" id="grammatikkValg">
-      <button class="gram-btn active" data-valg="ingen" onclick="velgGrammatikk(this)">
-        <span class="gram-ikon">🚫</span>
-        <span class="gram-label">Ingen grammatikkoppgaver</span>
-      </button>
-      <button class="gram-btn" data-valg="tilfeldig" onclick="velgGrammatikk(this)">
-        <span class="gram-ikon">🎲</span>
-        <span class="gram-label">Tilfeldige grammatikkoppgaver</span>
-        <span class="gram-sub">Basert på CEFR-nivå</span>
-      </button>
-      <button class="gram-btn" data-valg="egendefinert" onclick="velgGrammatikk(this)">
-        <span class="gram-ikon">✏️</span>
-        <span class="gram-label">Velg grammatikkfokus selv</span>
-        <span class="gram-sub">F.eks. preteritum, V2-regelen…</span>
-      </button>
-    </div>
-
-    <div id="grammatikkEgendefinert" style="display:none;margin-top:1rem;">
-      <label for="grammatikkInput" style="font-weight:600;font-size:.9rem;color:var(--textMid);margin-bottom:.4rem;display:block;">
-        Beskriv grammatikkfokus:
-      </label>
-      <input type="text" id="grammatikkInput"
-        placeholder="F.eks: preteritum av sterke verb, V2-regelen, adjektivbøyning…"
-        style="width:100%;padding:.7rem 1rem;font-size:.95rem;border:2px solid var(--bgGray);border-radius:8px;font-family:inherit;outline:none;transition:border-color .2s;"
-        onfocus="this.style.borderColor='var(--secondary)'"
-        onblur="this.style.borderColor='var(--bgGray)'"
-      />
-      <div class="info-box" style="margin-top:.8rem;">
-        <strong>Tips:</strong> Skriv ett grammatisk tema, f.eks. <em>«preteritum»</em>, <em>«V2-regelen og inversjon»</em> eller <em>«adjektivbøyning i bestem og ubestem form»</em>. Heftet får da en grammatikkforklaring + 5 oppgaver (a–e) tilpasset nivå ${valgtNiva}.
+    <!-- Steg 3: Hjelpespråk -->
+    <div class="card">
+      <h3><span class="step">3</span> Hjelpespråk (valgfritt)</h3>
+      <div class="lang-row">
+        <div>
+          <label for="sprakInput">Morsmål / hjelpespråk</label>
+          <input type="text" id="sprakInput" placeholder="F.eks. somali, arabisk, polsk…" />
+        </div>
+        <div>
+          <label for="plasseringSelect">Plassering</label>
+          <select id="plasseringSelect">
+            <option value="ingen">Ingen oversettelse</option>
+            <option value="tosidig">Side om side (i teksten)</option>
+            <option value="slutt">Ordliste til slutt</option>
+          </select>
+        </div>
       </div>
     </div>
+
+    <!-- Steg 4: Faglig fokus -->
+    <div class="card">
+      <h3><span class="step">4</span> Faglig fokus (valgfritt)</h3>
+      <textarea id="fokusInput" placeholder="F.eks: Fokuser på verktøy og utstyr. / Legg vekt på kommunikasjon med pasienter." rows="3"></textarea>
+    </div>
+
+    <!-- Steg 5: Grammatikkfokus -->
+    <div class="card">
+      <h3><span class="step">5</span> Grammatikkfokus (valgfritt)</h3>
+      <div class="grammatikk-valg">
+        <button class="gram-btn active" data-valg="ingen" onclick="velgGrammatikk(this)">
+          <span class="gram-ikon">🚫</span>
+          <span class="gram-label">Ingen</span>
+        </button>
+        <button class="gram-btn" data-valg="tilfeldig" onclick="velgGrammatikk(this)">
+          <span class="gram-ikon">🎲</span>
+          <span class="gram-label">Tilfeldig</span>
+          <span class="gram-sub">CEFR-tilpasset</span>
+        </button>
+        <button class="gram-btn" data-valg="egendefinert" onclick="velgGrammatikk(this)">
+          <span class="gram-ikon">✏️</span>
+          <span class="gram-label">Velg selv</span>
+        </button>
+      </div>
+      <div id="grammatikkEgendefinert" style="display:none;margin-top:1rem;">
+        <input type="text" id="grammatikkInput"
+          placeholder="F.eks: preteritum, V2-regelen, adjektivbøyning…" />
+      </div>
+    </div>
+
+    <!-- Generer-knapp -->
+    <div class="card">
+      <h3><span class="step">6</span> Generer innhold</h3>
+      <p style="font-size:.9rem;color:var(--textMid);margin-bottom:1rem;">
+        Først lager vi innholdet (tekster, oppgaver, ordliste). Deretter velger du selv hvilket format du vil ha.
+      </p>
+      <button id="genBtn" onclick="generer()">Generer innhold</button>
+      <div id="status"></div>
+    </div>
+
   </div>
 
-  <!-- Generer-knapp -->
-  <div class="card">
-    <h3><span class="step">6</span> Generer dokumenter</h3>
-    <p style="font-size:.9rem;color:var(--textMid);margin-bottom:1rem;">
-      Du får ett Word-arbeidshefte (.docx) og én PowerPoint-presentasjon (.pptx) lastet ned direkte.
-      Genereringen tar ca. 20–40 sekunder.
-    </p>
-    <button id="genBtn" onclick="generer()">Generer hefte og presentasjon</button>
-    <div id="status"></div>
+  <!-- Format-valg (vises etter generering) -->
+  <div id="formatValg">
+    <div class="card">
+      <h3><span class="step">✓</span> Innholdet er klart!</h3>
+      <p id="formatBeskrivelse" style="font-size:.95rem;color:var(--textMid);margin-bottom:1rem;"></p>
+
+      <div class="format-grid">
+        <button class="format-btn" id="btnDocx" onclick="lastNed('docx')">
+          <span class="ikon">📄</span>
+          <span class="navn">Word-dokument</span>
+          <span class="besk">Utskriftsklar .docx<br>til klasserommet</span>
+          <span class="lastet" style="display:none;">✓ Lastet ned</span>
+        </button>
+
+        <button class="format-btn" id="btnPptx" onclick="lastNed('pptx')">
+          <span class="ikon">🎬</span>
+          <span class="navn">PowerPoint</span>
+          <span class="besk">10 slides for<br>klassegjennomgang</span>
+          <span class="lastet" style="display:none;">✓ Lastet ned</span>
+        </button>
+
+        <button class="format-btn" id="btnHtml" onclick="lastNed('html')">
+          <span class="ikon">🌐</span>
+          <span class="navn">Interaktiv HTML</span>
+          <span class="besk">Selvstendig fil<br>med klikkbare oppgaver</span>
+          <span class="lastet" style="display:none;">✓ Lastet ned</span>
+        </button>
+      </div>
+
+      <button class="ny-runde-btn" onclick="resetSkjema()">↻ Lag nytt arbeidshefte</button>
+      <div id="formatStatus" style="margin-top:1rem;"></div>
+    </div>
   </div>
 
 </main>
@@ -484,28 +417,19 @@
 <script>
   let valgtNiva = null;
   let valgtGrammatikk = 'ingen';
-
-  // Tving liten forbokstav mens brukeren skriver
-  function normaliserYrke(input) {
-    const pos = input.selectionStart;
-    input.value = input.value.toLowerCase();
-    input.setSelectionRange(pos, pos);
-    document.getElementById('yrkeKorrigert').style.display = 'none';
-    document.getElementById('yrkeHint').style.display = 'none';
-  } // 'ingen' | 'tilfeldig' | 'egendefinert'
+  let aktivToken = null;
 
   function velgGrammatikk(btn) {
     document.querySelectorAll('.gram-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     valgtGrammatikk = btn.dataset.valg;
-    const egendefinert = document.getElementById('grammatikkEgendefinert');
-    egendefinert.style.display = valgtGrammatikk === 'egendefinert' ? 'block' : 'none';
+    document.getElementById('grammatikkEgendefinert').style.display =
+      valgtGrammatikk === 'egendefinert' ? 'block' : 'none';
     if (valgtGrammatikk !== 'egendefinert') {
       document.getElementById('grammatikkInput').value = '';
     }
   }
 
-  // CEFR-knapper
   document.querySelectorAll('.niva-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.niva-btn').forEach(b => b.classList.remove('active'));
@@ -514,17 +438,11 @@
     });
   });
 
-  // Plassering synkronisert med språkfelt
   const sprakInput = document.getElementById('sprakInput');
   const plasseringSelect = document.getElementById('plasseringSelect');
-
   sprakInput.addEventListener('input', () => {
-    if (sprakInput.value.trim() && plasseringSelect.value === 'ingen') {
-      plasseringSelect.value = 'slutt';
-    }
-    if (!sprakInput.value.trim()) {
-      plasseringSelect.value = 'ingen';
-    }
+    if (sprakInput.value.trim() && plasseringSelect.value === 'ingen') plasseringSelect.value = 'slutt';
+    if (!sprakInput.value.trim()) plasseringSelect.value = 'ingen';
   });
 
   function visStatus(melding, type) {
@@ -534,6 +452,15 @@
     el.style.display = 'block';
   }
 
+  function visFormatStatus(melding, type) {
+    const el = document.getElementById('formatStatus');
+    el.textContent = melding;
+    el.style.cssText = 'padding:.7rem 1rem;border-radius:6px;font-size:.9rem;' +
+      (type === 'ok' ? 'background:#d4edda;color:#155724;' :
+       type === 'error' ? 'background:#f8d7da;color:#721c24;' :
+       'background:#e0f4f6;color:#005F73;');
+  }
+
   async function generer() {
     const yrke = document.getElementById('yrkeInput').value.trim();
     const sprak = sprakInput.value.trim();
@@ -541,27 +468,25 @@
     const fokus = document.getElementById('fokusInput').value.trim();
     const grammatikkFokus = valgtGrammatikk === 'egendefinert'
       ? document.getElementById('grammatikkInput').value.trim()
-      : valgtGrammatikk; // 'ingen' eller 'tilfeldig'
+      : valgtGrammatikk;
 
     if (!yrke) { visStatus('⚠️ Skriv inn et yrke.', 'error'); return; }
-    if (!valgtNiva) { visStatus('⚠️ Velg et norsknivå (A1, A2, B1 eller B2).', 'error'); return; }
+    if (!valgtNiva) { visStatus('⚠️ Velg et norsknivå.', 'error'); return; }
     if (valgtGrammatikk === 'egendefinert' && !grammatikkFokus) {
-      visStatus('⚠️ Skriv inn grammatikkfokus, eller velg «Ingen» eller «Tilfeldig».', 'error');
-      return;
+      visStatus('⚠️ Skriv inn grammatikkfokus.', 'error'); return;
     }
 
     const btn = document.getElementById('genBtn');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Genererer…';
-    visStatus(`⏳ Lager arbeidshefte og presentasjon for «${yrke}» på nivå ${valgtNiva}. Vennligst vent…`, 'info');
+    btn.innerHTML = '<span class="spinner"></span> Genererer innhold…';
+    visStatus(`⏳ Lager arbeidshefte for «${yrke}» på nivå ${valgtNiva}. Tar 20–40 sekunder…`, 'info');
 
     try {
-      const resp = await fetch('/api/generer', {
+      const resp = await fetch('/api/generer-tekst', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          yrke,
-          niva: valgtNiva,
+          yrke, niva: valgtNiva,
           sprak: sprak || 'ingen',
           plassering: sprak ? plassering : 'ingen',
           fokus: fokus || '',
@@ -574,55 +499,106 @@
         const err = await resp.json().catch(() => ({ feil: 'Ukjent feil' }));
         throw new Error(err.feil || `HTTP ${resp.status}`);
       }
-
       const data = await resp.json();
-      if (data.feil) throw new Error(data.feil);
+      if (!data.ok) throw new Error(data.feil || 'Ukjent feil');
 
-      // Vis korrigert yrkenavn tilbake til brukeren hvis det ble endret
+      aktivToken = data.token;
+
+      // Vis korrigert yrke
       if (data.yrkeKorrigert && data.yrkeKorrigert !== yrke) {
-        const input = document.getElementById('yrkeInput');
-        input.value = data.yrkeKorrigert;
-        document.getElementById('yrkeKorrigert').style.display = 'inline';
-        document.getElementById('yrkeHint').style.display = 'block';
-        document.getElementById('yrkeHint').textContent =
-          `«${yrke}» ble korrigert til «${data.yrkeKorrigert}»`;
+        document.getElementById('yrkeInput').value = data.yrkeKorrigert;
+        const hint = document.getElementById('yrkeHint');
+        hint.style.display = 'block';
+        hint.textContent = `«${yrke}» ble korrigert til «${data.yrkeKorrigert}»`;
       }
 
-      // Last ned Word-fil
-      const docxBlob = new Blob(
-        [Uint8Array.from(atob(data.docx), c => c.charCodeAt(0))],
-        { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
-      );
-      const docxUrl = URL.createObjectURL(docxBlob);
-      const a1 = document.createElement('a');
-      a1.href = docxUrl;
-      a1.download = `${data.filnavn}-arbeidshefte-${data.niva}.docx`;
-      document.body.appendChild(a1); a1.click(); a1.remove();
-      URL.revokeObjectURL(docxUrl);
+      // Skjul skjema, vis format-valg
+      document.getElementById('skjema').style.display = 'none';
+      document.getElementById('formatValg').style.display = 'block';
+      document.getElementById('formatBeskrivelse').textContent =
+        `${data.yrke} – Nivå ${data.niva} | ${data.antallTekster} tekster, ${data.antallOppgaver} oppgaver` +
+        (data.harGrammatikk ? ' + grammatikkblokk' : '');
 
-      // Liten pause så nettleseren ikke blokkerer
-      await new Promise(r => setTimeout(r, 600));
-
-      // Last ned PowerPoint-fil
-      const pptxBlob = new Blob(
-        [Uint8Array.from(atob(data.pptx), c => c.charCodeAt(0))],
-        { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }
-      );
-      const pptxUrl = URL.createObjectURL(pptxBlob);
-      const a2 = document.createElement('a');
-      a2.href = pptxUrl;
-      a2.download = `${data.filnavn}-presentasjon-${data.niva}.pptx`;
-      document.body.appendChild(a2); a2.click(); a2.remove();
-      URL.revokeObjectURL(pptxUrl);
-
-      visStatus(`✅ Ferdig! To filer er lastet ned: arbeidshefte (.docx) og presentasjon (.pptx) for «${yrke}» nivå ${valgtNiva}.`, 'ok');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
 
     } catch (e) {
       visStatus(`❌ Feil: ${e.message}`, 'error');
     } finally {
       btn.disabled = false;
-      btn.textContent = 'Generer hefte og presentasjon';
+      btn.textContent = 'Generer innhold';
     }
+  }
+
+  async function lastNed(format) {
+    if (!aktivToken) { visFormatStatus('Token mangler – generer på nytt.', 'error'); return; }
+    const btnId = format === 'docx' ? 'btnDocx' : format === 'pptx' ? 'btnPptx' : 'btnHtml';
+    const btn = document.getElementById(btnId);
+    const orig = btn.querySelector('.ikon').textContent;
+    btn.disabled = true;
+    btn.querySelector('.ikon').innerHTML = '<div class="spinner-mini"></div>';
+    visFormatStatus(`⏳ Lager ${format.toUpperCase()}-filen…`, 'info');
+
+    try {
+      const resp = await fetch(`/api/build-${format}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: aktivToken,
+          passord: sessionStorage.getItem('yrkesappen_pw') || '',
+        }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ feil: 'Ukjent feil' }));
+        throw new Error(err.feil || `HTTP ${resp.status}`);
+      }
+      const data = await resp.json();
+      if (!data.ok) throw new Error(data.feil || 'Ukjent feil');
+
+      const mimeMap = {
+        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        html: 'text/html',
+      };
+      const blob = new Blob(
+        [Uint8Array.from(atob(data.fil), c => c.charCodeAt(0))],
+        { type: mimeMap[format] }
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.filnavn;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+
+      btn.querySelector('.lastet').style.display = 'block';
+      visFormatStatus(`✅ ${data.filnavn} lastet ned!`, 'ok');
+    } catch (e) {
+      visFormatStatus(`❌ Feil: ${e.message}`, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.querySelector('.ikon').textContent = orig;
+    }
+  }
+
+  function resetSkjema() {
+    aktivToken = null;
+    document.getElementById('skjema').style.display = 'block';
+    document.getElementById('formatValg').style.display = 'none';
+    document.getElementById('status').style.display = 'none';
+    document.getElementById('formatStatus').textContent = '';
+    document.getElementById('yrkeHint').style.display = 'none';
+    document.getElementById('yrkeInput').value = '';
+    document.getElementById('fokusInput').value = '';
+    document.getElementById('grammatikkInput').value = '';
+    sprakInput.value = '';
+    plasseringSelect.value = 'ingen';
+    valgtNiva = null;
+    valgtGrammatikk = 'ingen';
+    document.querySelectorAll('.niva-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.gram-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.gram-btn[data-valg="ingen"]').classList.add('active');
+    document.querySelectorAll('.format-btn .lastet').forEach(el => el.style.display = 'none');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   // ── Autentisering ──────────────────────────────────────────
@@ -642,11 +618,8 @@
     const feilEl = document.getElementById('loggInnFeil');
     const btn = document.getElementById('loggInnBtn');
     if (!passord) return;
-
-    btn.disabled = true;
-    btn.textContent = 'Sjekker…';
+    btn.disabled = true; btn.textContent = 'Sjekker…';
     feilEl.style.display = 'none';
-
     try {
       const resp = await fetch('/api/logginn', {
         method: 'POST',
@@ -668,8 +641,7 @@
       feilEl.textContent = '❌ Nettverksfeil. Prøv igjen.';
       feilEl.style.display = 'block';
     } finally {
-      btn.disabled = false;
-      btn.textContent = 'Logg inn';
+      btn.disabled = false; btn.textContent = 'Logg inn';
     }
   }
 
@@ -684,9 +656,7 @@
     inp.type = inp.type === 'password' ? 'text' : 'password';
   }
 
-  // Sjekk ved oppstart
   sjekkInnlogging();
-
 </script>
 </body>
 </html>
