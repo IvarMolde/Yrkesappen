@@ -972,10 +972,24 @@ function mkAA(pa,d){mx++;const div=document.createElement('div');div.className='
 
 // \\u2550 BYGG SIDER \\u2550
 const tekster=D.seksjoner.filter(s=>s.type==='tekst');
-aS('s-t','\\ud83d\\udcd6','Fagtekster',s=>{s.innerHTML='<h2 class="st"><span class="badge">\\ud83d\\udcd6</span> Fagtekster</h2><p class="si">'+e(D.intro)+'</p>';tekster.forEach(t=>{s.innerHTML+='<h3 style="color:var(--secondary);margin:1.5rem 0 .5rem;font-size:1.15rem">\\ud83d\\udcc4 Tekst '+t.nummer+': '+e(t.tittel)+'</h3><div class="tb">'+tO(t.innhold)+'</div>';});});
-
 const leseO=D.seksjoner.filter(s=>s.type==='oppgave'&&s.oppgavetype==='leseforst\\u00e5else');
-if(leseO.length>0){aS('s-l','\\ud83d\\udcdd','Leseforst\\u00e5else',s=>{s.innerHTML='<h2 class="st"><span class="badge">\\ud83d\\udcdd</span> Leseforst\\u00e5else</h2><p class="si">Les fagtekstene og svar p\\u00e5 sp\\u00f8rsm\\u00e5lene.</p>';leseO.forEach(oppg=>{const k=document.createElement('div');k.className='ok0';k.innerHTML='<div class="oh">Oppgave '+oppg.nummer+': '+e(oppg.tittel)+'</div><div class="ob"><div class="oi">'+e(oppg.instruksjon)+'</div></div>';const b=k.querySelector('.ob');oppg.delopgaver.forEach(d=>mkAA(b,d));s.appendChild(k);});});}
+aS('s-t','\\ud83d\\udcd6','Fagtekst og leseforst\\u00e5else',s=>{
+  s.innerHTML='<h2 class="st"><span class="badge">\\ud83d\\udcd6</span> Fagtekst og leseforst\\u00e5else</h2><p class="si">'+e(D.intro)+'</p>';
+  tekster.forEach(t=>{
+    // Tekst
+    s.innerHTML+='<h3 style="color:var(--secondary);margin:1.5rem 0 .5rem;font-size:1.15rem">\\ud83d\\udcc4 Tekst '+t.nummer+': '+e(t.tittel)+'</h3><div class="tb">'+tO(t.innhold)+'</div>';
+    // Leseforståelsesoppgave(r) knyttet til denne teksten
+    const tilknyttet=leseO.filter(o=>o.tilknyttet_tekst==='Tekst '+t.nummer);
+    tilknyttet.forEach(oppg=>{
+      const k=document.createElement('div');
+      k.className='ok0';
+      k.innerHTML='<div class="oh">Oppgave '+oppg.nummer+': '+e(oppg.tittel)+'</div><div class="ob"><div class="oi">'+e(oppg.instruksjon)+'</div></div>';
+      const b=k.querySelector('.ob');
+      oppg.delopgaver.forEach(d=>mkAA(b,d));
+      s.appendChild(k);
+    });
+  });
+});
 
 const gvO=D.seksjoner.filter(s=>s.type==='oppgave'&&(s.oppgavetype==='grammatikk'||s.oppgavetype==='vokabular'));
 if(gvO.length>0){aS('s-gv','\\u270f\\ufe0f','Grammatikk & Vokabular',s=>{s.innerHTML='<h2 class="st"><span class="badge">\\u270f\\ufe0f</span> Grammatikk & Vokabular</h2><p class="si">\\u00d8v p\\u00e5 ord og grammatikk fra tekstene.</p>';gvO.forEach(oppg=>{const k=document.createElement('div');k.className='ok0';k.innerHTML='<div class="oh">Oppgave '+oppg.nummer+': '+e(oppg.tittel)+'</div><div class="ob"><div class="oi">'+e(oppg.instruksjon)+'</div></div>';const b=k.querySelector('.ob');oppg.delopgaver.forEach(d=>mkFI(b,d));s.appendChild(k);});});}
