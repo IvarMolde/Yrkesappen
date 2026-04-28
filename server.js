@@ -161,7 +161,7 @@ Heftet skal ha denne strukturen der tekster og oppgaver er FLETTET SAMMEN:
     { "type": "oppgave", "nummer": 5, "tilknyttet_tekst": "Tekst 3", "oppgavetype": "leseforståelse", "tittel": "...", "instruksjon": "...", "delopgaver": [ ...5 stk med fasit ] },
     { "type": "oppgave", "nummer": 6, "tilknyttet_tekst": "Generell", "oppgavetype": "grammatikk", "tittel": "...", "instruksjon": "...", "delopgaver": [ ...5 stk med fasit ] },
     { "type": "oppgave", "nummer": 7, "tilknyttet_tekst": "Generell", "oppgavetype": "vokabular", "tittel": "...", "instruksjon": "...", "delopgaver": [ ...5 stk med fasit ] },
-    { "type": "oppgave", "nummer": 8, "tilknyttet_tekst": "Generell", "oppgavetype": "skriv_muntlig", "tittel": "...", "instruksjon": "...", "delopgaver": [ ...5 stk med fasit (eksempelsvar) ] }
+    { "type": "oppgave", "nummer": 8, "tilknyttet_tekst": "Generell", "oppgavetype": "vokabular", "tittel": "Ord i kontekst", "instruksjon": "Bruk ordene fra ordlisten i riktig sammenheng.", "delopgaver": [ ...5 stk med fasit ] }
   ],
   "ordliste": [
     { "norsk": "en pasient", "forklaring": "..."${sprak && sprak !== 'ingen' ? `, "oversettelse": "kun ${sprak}"` : ''} }
@@ -181,7 +181,7 @@ STRENGE KRAV:
 - Alle oppgaver har nøyaktig 5 delopgaver (a–e)
 - Alle delopgaver MÅ ha "fasit"-felt med forventet svar/eksempelsvar
 - For leseforståelse: fasit er kort svar (1-2 setninger) basert på teksten
-- For skriv_muntlig: fasit er et eksempelsvar (3-5 setninger)
+- For vokabular: fasit er konkret riktig ord eller uttrykk
 - For grammatikk/vokabular: fasit er konkret riktig svar
 - Ordlisten: 12–16 ord
 - Legg til 10–12 seksjoner totalt
@@ -344,7 +344,7 @@ async function buildDocx(data, hjelpesprak, plassering, grammatikkData) {
   }
 
   function oppgaveHeader(nr, tittel, instruksjon, tilknyttetTekst, oppgavetype) {
-    const typeIkon = { leseforståelse: '📖', grammatikk: '✏️', vokabular: '🔤', skriv_muntlig: '💬' }[oppgavetype] || '📝';
+    const typeIkon = { leseforståelse: '📖', grammatikk: '✏️', vokabular: '🔤' }[oppgavetype] || '📝';
     const visTekst = tilknyttetTekst && tilknyttetTekst !== 'Generell';
     return [
       new Paragraph({
@@ -834,8 +834,6 @@ function escapeHtml(s) {
 function buildHtml(data, hjelpesprak, plassering, grammatikkData) {
   const { yrke, niva, intro, seksjoner, ordliste } = data;
   const showHelp = hjelpesprak && hjelpesprak !== 'ingen';
-
-  // Embed all data as JSON for client-side
   const klientData = {
     yrke, niva, intro, seksjoner, ordliste,
     grammatikkData: grammatikkData || null,
@@ -847,590 +845,147 @@ function buildHtml(data, hjelpesprak, plassering, grammatikkData) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${escapeHtml(yrke)} – Arbeidshefte ${escapeHtml(niva)}</title>
+<title>${escapeHtml(yrke)} – Interaktivt arbeidshefte ${escapeHtml(niva)}</title>
 <style>
-  *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --primary: #005F73; --secondary: #0A9396; --accent: #E9C46A;
-    --bgLight: #F8F9FA; --bgGray: #E9ECEF; --textDark: #1B1B1B;
-    --textMid: #495057; --white: #FFFFFF;
-    --green: #2D9E5C; --red: #C5403A;
-  }
-  body {
-    font-family: 'Segoe UI', Arial, sans-serif;
-    background: var(--bgLight); color: var(--textDark);
-    line-height: 1.5; padding-bottom: 4rem;
-  }
-  header {
-    background: var(--primary); color: var(--white);
-    padding: 2rem 1.5rem; text-align: center;
-    border-bottom: 6px solid var(--accent);
-  }
-  header h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); letter-spacing: -0.5px; }
-  header h2 { font-size: 1.1rem; font-weight: 400; opacity: .85; margin-top: .4rem; }
-  main { max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; }
-  section.kort {
-    background: var(--white); border-radius: 12px;
-    box-shadow: 0 4px 18px rgba(0,0,0,.08);
-    padding: 1.8rem 2rem; margin-bottom: 1.5rem;
-  }
-  h2.seksjon-tittel {
-    color: var(--primary); font-size: 1.6rem; margin-bottom: 1rem;
-    border-bottom: 3px solid var(--primary); padding-bottom: .5rem;
-  }
-  h3.tekst-tittel {
-    color: var(--secondary); font-size: 1.3rem; margin-bottom: .8rem;
-    display: flex; align-items: center; gap: .5rem;
-  }
-  .tekst-badge {
-    background: var(--primary); color: var(--white);
-    padding: .25rem .8rem; border-radius: 6px; font-size: .85rem; font-weight: 700;
-  }
-  .tekst-innhold { font-size: 1.05rem; line-height: 1.7; color: var(--textDark); }
-  .tekst-innhold .ord-link {
-    color: var(--secondary); border-bottom: 1px dotted var(--secondary);
-    cursor: help; font-weight: 600;
-  }
-  .oppgave-header {
-    background: var(--primary); color: var(--white);
-    padding: .6rem 1rem; border-radius: 8px 8px 0 0;
-    font-weight: 700; display: flex; align-items: center; gap: .6rem;
-  }
-  .oppgave-instruksjon {
-    font-style: italic; color: var(--textMid);
-    margin: .8rem 0; font-size: .95rem;
-  }
-  .oppg-type-badge {
-    background: var(--secondary); color: var(--white);
-    padding: .2rem .6rem; border-radius: 4px; font-size: .8rem;
-  }
-  .delopg {
-    margin-bottom: 1rem; padding: .9rem 1rem;
-    background: var(--bgLight); border-left: 3px solid var(--bgGray);
-    border-radius: 4px; transition: border-color .2s;
-  }
-  .delopg.korrekt { border-left-color: var(--green); background: #e8f5ed; }
-  .delopg.feil { border-left-color: var(--red); background: #fbebeb; }
-  .delopg-bokstav {
-    display: inline-block; background: var(--primary); color: var(--white);
-    width: 28px; height: 28px; line-height: 28px; text-align: center;
-    border-radius: 50%; font-weight: 700; margin-right: .6rem;
-  }
-  .delopg-tekst { display: inline; font-size: 1rem; }
-  .svar-input, .svar-textarea {
-    width: 100%; margin-top: .6rem; padding: .6rem .8rem;
-    border: 2px solid var(--bgGray); border-radius: 6px;
-    font-family: inherit; font-size: 1rem; background: var(--white);
-    transition: border-color .2s;
-  }
-  .svar-textarea { min-height: 70px; resize: vertical; }
-  .svar-input:focus, .svar-textarea:focus { border-color: var(--secondary); outline: none; }
-  .knapp-rad { display: flex; gap: .5rem; margin-top: .6rem; flex-wrap: wrap; }
-  .sjekk-btn, .vis-btn {
-    background: var(--secondary); color: var(--white);
-    border: none; padding: .5rem 1rem; border-radius: 6px;
-    font-family: inherit; font-size: .9rem; font-weight: 600;
-    cursor: pointer; transition: background .2s;
-  }
-  .sjekk-btn:hover { background: var(--primary); }
-  .vis-btn { background: var(--accent); color: var(--textDark); }
-  .vis-btn:hover { background: #d4a93f; }
-  .fasit-boks {
-    margin-top: .7rem; padding: .7rem .9rem;
-    background: #fff8e1; border-left: 4px solid var(--accent);
-    border-radius: 4px; font-size: .92rem; line-height: 1.5;
-    display: none;
-  }
-  .fasit-boks.synlig { display: block; }
-  .fasit-boks strong { color: var(--primary); }
-  .feedback {
-    margin-top: .5rem; padding: .5rem .8rem; border-radius: 4px;
-    font-size: .9rem; font-weight: 600; display: none;
-  }
-  .feedback.synlig { display: block; }
-  .feedback.ok { background: #d4edda; color: #155724; }
-  .feedback.error { background: #f8d7da; color: #721c24; }
-
-  /* Multiple choice */
-  .alternativ-rad {
-    display: flex; flex-direction: column; gap: .4rem; margin-top: .6rem;
-  }
-  .alt-knapp {
-    background: var(--white); border: 2px solid var(--bgGray);
-    padding: .6rem .9rem; border-radius: 6px; cursor: pointer;
-    font-family: inherit; font-size: .98rem; text-align: left;
-    transition: all .15s; display: flex; align-items: center; gap: .6rem;
-  }
-  .alt-knapp:hover { border-color: var(--secondary); background: #f0fafa; }
-  .alt-knapp.valgt { border-color: var(--primary); background: #e6f4f6; }
-  .alt-knapp.korrekt { border-color: var(--green); background: #e8f5ed; }
-  .alt-knapp.feil { border-color: var(--red); background: #fbebeb; }
-  .alt-knapp .alt-bokstav {
-    background: var(--bgGray); width: 26px; height: 26px;
-    line-height: 26px; text-align: center; border-radius: 50%;
-    font-weight: 700; flex-shrink: 0;
-  }
-
-  /* Ordstilling drag-drop */
-  .ord-bank, .ord-svar {
-    display: flex; flex-wrap: wrap; gap: .5rem; padding: .8rem;
-    background: var(--bgLight); border-radius: 6px; min-height: 60px;
-    margin-top: .5rem;
-  }
-  .ord-svar {
-    background: #fffbe6; border: 2px dashed var(--accent);
-  }
-  .ord-svar:empty::before {
-    content: 'Klikk på ord under for å sette dem i rekkefølge…';
-    color: var(--textMid); font-style: italic; font-size: .88rem;
-  }
-  .ord-brikke {
-    background: var(--white); padding: .4rem .8rem;
-    border: 2px solid var(--secondary); border-radius: 6px;
-    cursor: pointer; font-size: .95rem; user-select: none;
-    transition: all .15s;
-  }
-  .ord-brikke:hover { background: var(--secondary); color: var(--white); }
-  .ord-brikke.brukt { opacity: .35; cursor: default; pointer-events: none; }
-
-  /* Matching */
-  .match-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: .8rem; }
-  .match-kolonne { display: flex; flex-direction: column; gap: .4rem; }
-  .match-item {
-    background: var(--white); padding: .6rem .9rem;
-    border: 2px solid var(--bgGray); border-radius: 6px;
-    cursor: pointer; font-size: .95rem; transition: all .15s;
-  }
-  .match-item:hover { border-color: var(--secondary); }
-  .match-item.valgt { border-color: var(--primary); background: #e6f4f6; }
-  .match-item.koblet { border-color: var(--green); background: #e8f5ed; }
-  .match-item.koblet::after { content: ' ✓'; color: var(--green); font-weight: 700; }
-
-  /* Ordliste */
-  .ordliste-tabell {
-    width: 100%; border-collapse: collapse; margin-top: 1rem;
-  }
-  .ordliste-tabell th {
-    background: var(--primary); color: var(--white);
-    padding: .7rem; text-align: left; font-size: .9rem;
-  }
-  .ordliste-tabell td {
-    padding: .6rem .8rem; border-bottom: 1px solid var(--bgGray);
-    font-size: .95rem;
-  }
-  .ordliste-tabell tr:nth-child(even) td { background: var(--bgLight); }
-  .ordliste-tabell .ord-norsk { color: var(--secondary); font-weight: 600; }
-
-  /* Grammatikk */
-  .gram-forklaring {
-    background: #e6f4f6; border-left: 4px solid var(--secondary);
-    padding: 1rem 1.2rem; border-radius: 0 6px 6px 0; margin: 1rem 0;
-  }
-  .gram-forklaring h4 { color: var(--primary); margin-bottom: .5rem; }
-  .gram-oppgave-header {
-    background: var(--secondary);
-  }
-
-  /* Fremdriftslinje */
-  #fremdrift {
-    position: sticky; top: 0; background: var(--white);
-    box-shadow: 0 2px 8px rgba(0,0,0,.1); z-index: 10;
-    padding: .6rem 1.5rem; display: flex; align-items: center; gap: 1rem;
-  }
-  #fremdrift-bar {
-    flex: 1; height: 8px; background: var(--bgGray);
-    border-radius: 4px; overflow: hidden;
-  }
-  #fremdrift-fyll {
-    height: 100%; background: var(--secondary);
-    width: 0%; transition: width .3s;
-  }
-  #fremdrift-tekst { font-size: .85rem; color: var(--textMid); font-weight: 600; }
-
-  footer {
-    text-align: center; padding: 2rem; color: var(--textMid);
-    font-size: .85rem; border-top: 1px solid var(--bgGray); margin-top: 3rem;
-  }
-  @media (max-width: 600px) {
-    .match-grid { grid-template-columns: 1fr; }
-    section.kort { padding: 1.2rem; }
-  }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--primary:#005F73;--secondary:#0A9396;--accent:#E9C46A;--bgLight:#F8F9FA;--bgGray:#E9ECEF;--textDark:#1B1B1B;--textMid:#495057;--white:#FFFFFF;--green:#2D9E5C;--red:#C5403A}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bgLight);color:var(--textDark);min-height:100vh;display:flex;flex-direction:column}
+.topbar{background:var(--primary);color:var(--white);display:flex;align-items:center;padding:.6rem 1.2rem;gap:1rem;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.topbar-tittel{font-weight:700;font-size:1rem;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar-tittel span{color:var(--accent);font-weight:400;margin-left:.3rem}
+.score-boks{margin-left:auto;display:flex;align-items:center;gap:.7rem;flex-shrink:0}
+.score-ring{width:44px;height:44px;position:relative}
+.score-ring svg{transform:rotate(-90deg)}
+.score-ring circle{fill:none;stroke-width:4}
+.score-ring .bg{stroke:rgba(255,255,255,.2)}
+.score-ring .fg{stroke:var(--accent);stroke-linecap:round;transition:stroke-dashoffset .4s}
+.score-tall{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:800;color:var(--accent)}
+.score-label{font-size:.78rem;opacity:.8;line-height:1.2;text-align:right}
+.layout{display:flex;flex:1;min-height:0}
+.meny{width:240px;background:var(--white);border-right:1px solid var(--bgGray);overflow-y:auto;flex-shrink:0;padding:.8rem 0}
+.meny-btn{width:100%;text-align:left;background:none;border:none;padding:.85rem 1.2rem;font-family:inherit;font-size:.92rem;cursor:pointer;display:flex;align-items:center;gap:.7rem;color:var(--textDark);transition:all .15s;border-left:3px solid transparent}
+.meny-btn:hover{background:var(--bgLight);color:var(--primary)}
+.meny-btn.aktiv{background:#e6f4f6;color:var(--primary);font-weight:700;border-left-color:var(--primary)}
+.meny-btn .mi{font-size:1.3rem;flex-shrink:0;width:28px;text-align:center}
+.meny-btn .mm{margin-left:auto;background:var(--accent);color:var(--textDark);font-size:.7rem;font-weight:700;padding:.15rem .45rem;border-radius:10px}
+.meny-btn .md{margin-left:auto;color:var(--green);font-weight:700;font-size:1rem}
+.innhold{flex:1;overflow-y:auto;padding:2rem;max-width:900px}
+.side{display:none}
+.side.aktiv{display:block}
+h2.st{color:var(--primary);font-size:1.5rem;margin-bottom:.5rem;display:flex;align-items:center;gap:.6rem}
+h2.st .badge{background:var(--primary);color:var(--white);padding:.2rem .7rem;border-radius:6px;font-size:.8rem}
+.si{color:var(--textMid);font-size:.92rem;margin-bottom:1.5rem;font-style:italic}
+.tb{background:var(--white);padding:1.5rem;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:1.5rem;line-height:1.7;font-size:1.05rem}
+.tb .ol{color:var(--secondary);border-bottom:1px dotted var(--secondary);cursor:help;font-weight:600}
+.ok0{background:var(--white);border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:1rem;overflow:hidden}
+.oh{background:var(--primary);color:var(--white);padding:.7rem 1rem;font-weight:700;font-size:.95rem;display:flex;align-items:center;gap:.5rem}
+.oh.g{background:var(--secondary)}
+.ob{padding:1.2rem}
+.oi{color:var(--textMid);font-style:italic;margin-bottom:1rem;font-size:.9rem}
+.d{margin-bottom:1.2rem;padding:.8rem;background:var(--bgLight);border-left:3px solid var(--bgGray);border-radius:4px;transition:border-color .3s,background .3s}
+.d.ok{border-left-color:var(--green);background:#e8f5ed}
+.d.no{border-left-color:var(--red);background:#fbebeb}
+.dl{display:flex;align-items:baseline;gap:.5rem;margin-bottom:.5rem}
+.dn{background:var(--primary);color:var(--white);width:26px;height:26px;line-height:26px;text-align:center;border-radius:50%;font-weight:700;font-size:.85rem;flex-shrink:0}
+.dt{font-size:1rem}
+.si0{width:100%;margin-top:.5rem;padding:.55rem .7rem;border:2px solid var(--bgGray);border-radius:6px;font-family:inherit;font-size:1rem;background:var(--white);transition:border-color .2s}
+.si0:focus{border-color:var(--secondary);outline:none}
+.br{display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap}
+.bs,.bf{border:none;padding:.45rem .9rem;border-radius:6px;font-family:inherit;font-size:.88rem;font-weight:600;cursor:pointer;transition:background .2s}
+.bs{background:var(--secondary);color:var(--white)}.bs:hover{background:var(--primary)}
+.bf{background:var(--accent);color:var(--textDark)}.bf:hover{background:#d4a93f}
+.fb{margin-top:.4rem;padding:.4rem .7rem;border-radius:4px;font-size:.88rem;font-weight:600;display:none}
+.fb.v{display:block}.fb.o{background:#d4edda;color:#155724}.fb.e{background:#f8d7da;color:#721c24}
+.fx{margin-top:.5rem;padding:.6rem .8rem;background:#fff8e1;border-left:3px solid var(--accent);border-radius:4px;font-size:.9rem;display:none}
+.fx.v{display:block}
+.al{display:flex;flex-direction:column;gap:.35rem;margin-top:.5rem}
+.ab{background:var(--white);border:2px solid var(--bgGray);padding:.55rem .8rem;border-radius:6px;cursor:pointer;font-family:inherit;font-size:.95rem;text-align:left;display:flex;align-items:center;gap:.6rem;transition:all .15s}
+.ab:hover:not(:disabled){border-color:var(--secondary);background:#f0fafa}
+.ab .al0{background:var(--bgGray);width:24px;height:24px;line-height:24px;text-align:center;border-radius:50%;font-weight:700;font-size:.8rem;flex-shrink:0}
+.ab.r{border-color:var(--green);background:#e8f5ed}
+.ab.w{border-color:var(--red);background:#fbebeb}
+.os{display:flex;flex-wrap:wrap;gap:.4rem;min-height:50px;padding:.6rem;background:#fffbe6;border:2px dashed var(--accent);border-radius:6px;margin-top:.5rem}
+.os:empty::before{content:'Klikk ordene nedenfor i riktig rekkefølge\\2026';color:var(--textMid);font-style:italic;font-size:.85rem}
+.ob0{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem}
+.op{background:var(--white);padding:.35rem .7rem;border:2px solid var(--secondary);border-radius:6px;cursor:pointer;font-size:.92rem;user-select:none;transition:all .15s}
+.op:hover{background:var(--secondary);color:var(--white)}
+.op.u{opacity:.3;pointer-events:none}
+.ma{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.6rem}
+.mk{display:flex;flex-direction:column;gap:.35rem}
+.mkh{font-size:.8rem;font-weight:700;color:var(--textMid);text-transform:uppercase;margin-bottom:.3rem}
+.me{background:var(--white);border:2px solid var(--bgGray);padding:.5rem .7rem;border-radius:6px;cursor:pointer;font-size:.9rem;transition:all .15s}
+.me:hover:not(.k){border-color:var(--secondary)}
+.me.s{border-color:var(--primary);background:#e6f4f6}
+.me.k{border-color:var(--green);background:#e8f5ed;cursor:default}
+.me.ff{border-color:var(--red);background:#fbebeb}
+.og{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.8rem}
+.oc{background:var(--white);border-left:4px solid var(--secondary);border-radius:6px;padding:.8rem 1rem;box-shadow:0 1px 6px rgba(0,0,0,.06)}
+.oc .on{color:var(--secondary);font-weight:700;font-size:1rem}
+.oc .of{color:var(--textMid);font-size:.88rem;margin-top:.2rem}
+.oc .oo{color:var(--primary);font-style:italic;font-size:.85rem;margin-top:.15rem}
+.gi{background:#e6f4f6;border-left:4px solid var(--secondary);padding:1rem 1.2rem;border-radius:0 8px 8px 0;margin-bottom:1.5rem}
+.gi h4{color:var(--primary);margin-bottom:.4rem}
+@media(max-width:700px){
+  .layout{flex-direction:column}
+  .meny{width:100%;border-right:none;border-bottom:1px solid var(--bgGray);display:flex;overflow-x:auto;padding:.4rem;gap:.3rem}
+  .meny-btn{width:auto;white-space:nowrap;padding:.6rem .9rem;border-left:none;border-bottom:3px solid transparent;font-size:.82rem}
+  .meny-btn.aktiv{border-left:none;border-bottom-color:var(--primary)}
+  .meny-btn .mm,.meny-btn .md{display:none}
+  .innhold{padding:1.2rem}
+  .ma{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
-
-<header>
-  <h1>${escapeHtml(yrke.toUpperCase())}</h1>
-  <h2>Arbeidshefte – Norsknivå ${escapeHtml(niva)} | Molde voksenopplæringssenter</h2>
-</header>
-
-<div id="fremdrift">
-  <span id="fremdrift-tekst">Fremgang: 0%</span>
-  <div id="fremdrift-bar"><div id="fremdrift-fyll"></div></div>
+<div class="topbar">
+  <div class="topbar-tittel">\${escapeHtml(yrke.toUpperCase())}<span>Nivå \${escapeHtml(niva)}</span></div>
+  <div class="score-boks">
+    <div class="score-label"><span id="sT">0 / 0</span><br>poeng</div>
+    <div class="score-ring"><svg width="44" height="44" viewBox="0 0 44 44"><circle class="bg" cx="22" cy="22" r="18"/><circle class="fg" id="sR" cx="22" cy="22" r="18" stroke-dasharray="113.1" stroke-dashoffset="113.1"/></svg><div class="score-tall" id="sP">0%</div></div>
+  </div>
 </div>
-
-<main id="innhold"></main>
-
-<footer>
-  © Molde voksenopplæringssenter – MBO &nbsp;|&nbsp; Yrkesappen
-</footer>
-
+<div class="layout">
+  <nav class="meny" id="meny"></nav>
+  <div class="innhold" id="inn"></div>
+</div>
 <script>
-const DATA = ${JSON.stringify(klientData)};
-let totalOppgaver = 0;
-let lostOppgaver = 0;
+const D=\${JSON.stringify(klientData)};
+let p=0,mx=0;
+function uS(){const pst=mx===0?0:Math.round(p/mx*100);document.getElementById('sT').textContent=p+' / '+mx;document.getElementById('sP').textContent=pst+'%';const r=document.getElementById('sR');r.style.strokeDashoffset=113.1-(113.1*pst/100);document.querySelectorAll('[data-s]').forEach(b=>{const s=document.getElementById(b.dataset.s);if(!s)return;const t=s.querySelectorAll('.d').length,d=s.querySelectorAll('.d[data-d="1"]').length;const mm=b.querySelector('.mm'),md=b.querySelector('.md');if(t>0&&d===t){if(mm)mm.style.display='none';if(md)md.style.display='inline';}else if(t>0){if(mm){mm.style.display='inline';mm.textContent=d+'/'+t;}if(md)md.style.display='none';}});}
+function gP(el,v){if(el.dataset.d==='1')return;el.dataset.d='1';p+=v;uS();}
+function n(s){return String(s||'').toLowerCase().trim().replace(/[.,!?;:]/g,'').replace(/\\s+/g,' ');}
+function e(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+const sd=[];const mn=document.getElementById('meny');const inn=document.getElementById('inn');
+function aS(id,ik,tit,fn){const s=document.createElement('div');s.className='side';s.id=id;fn(s);inn.appendChild(s);const b=document.createElement('button');b.className='meny-btn';b.dataset.s=id;b.innerHTML='<span class="mi">'+ik+'</span><span>'+e(tit)+'</span><span class="mm" style="display:none"></span><span class="md" style="display:none">\\u2713</span>';b.onclick=()=>vS(id);mn.appendChild(b);sd.push(id);}
+function vS(id){document.querySelectorAll('.side').forEach(s=>s.classList.remove('aktiv'));document.querySelectorAll('.meny-btn').forEach(b=>b.classList.remove('aktiv'));const s=document.getElementById(id);if(s)s.classList.add('aktiv');const b=document.querySelector('[data-s="'+id+'"]');if(b)b.classList.add('aktiv');document.querySelector('.innhold').scrollTop=0;}
+function tO(c){let h=e(c);D.ordliste.forEach(o=>{const b=o.norsk.replace(/^(en |ei |et |å )/i,'');if(b.length<3)return;const re=new RegExp('\\\\b('+b.replace(/[.*+?^\${}()|[\\]\\\\]/g,'\\\\$&')+')\\\\b','gi');const t=e((o.forklaring||'')+(o.oversettelse?' ('+o.oversettelse+')':''));h=h.replace(re,'<span class="ol" title="'+t+'">$1</span>');});return h;}
 
-function oppdaterFremdrift() {
-  const pst = totalOppgaver === 0 ? 0 : Math.round((lostOppgaver / totalOppgaver) * 100);
-  document.getElementById('fremdrift-fyll').style.width = pst + '%';
-  document.getElementById('fremdrift-tekst').textContent = 'Fremgang: ' + pst + '% (' + lostOppgaver + '/' + totalOppgaver + ')';
-}
+function mkFI(pa,d){mx++;const div=document.createElement('div');div.className='d';div.innerHTML='<div class="dl"><span class="dn">'+d.bokstav+'</span><span class="dt">'+e(d.tekst)+'</span></div><input type="text" class="si0" placeholder="Skriv svaret\\u2026"><div class="br"><button class="bs">Sjekk</button><button class="bf">Vis fasit</button></div><div class="fb"></div><div class="fx"><strong>Fasit:</strong> '+e(d.fasit)+'</div>';const inp=div.querySelector('input'),fb=div.querySelector('.fb');div.querySelector('.bs').onclick=()=>{if(n(inp.value)===n(d.fasit)){fb.className='fb o v';fb.textContent='\\u2713 Riktig!';div.classList.add('ok');gP(div,1);}else{fb.className='fb e v';fb.textContent='\\u2717 Ikke riktig. Pr\\u00f8v igjen eller vis fasit.';}};div.querySelector('.bf').onclick=()=>{div.querySelector('.fx').classList.add('v');div.classList.add('no');gP(div,0);};pa.appendChild(div);}
 
-function markerLost(elem) {
-  if (elem.dataset.lost === '1') return;
-  elem.dataset.lost = '1';
-  lostOppgaver++;
-  oppdaterFremdrift();
-}
+function mkMC(pa,d){mx++;const div=document.createElement('div');div.className='d';div.innerHTML='<div class="dl"><span class="dn">'+d.bokstav+'</span><span class="dt">'+e(d.tekst)+'</span></div><div class="al"></div><div class="fb"></div>';const al=div.querySelector('.al'),fb=div.querySelector('.fb');d.alternativer.forEach((a,i)=>{const b=document.createElement('button');b.className='ab';b.innerHTML='<span class="al0">'+['A','B','C'][i]+'</span><span>'+e(a)+'</span>';b.onclick=()=>{al.querySelectorAll('.ab').forEach(x=>x.disabled=true);if(n(a)===n(d.fasit)){b.classList.add('r');fb.className='fb o v';fb.textContent='\\u2713 Riktig!';div.classList.add('ok');gP(div,1);}else{b.classList.add('w');al.querySelectorAll('.ab').forEach((x,xi)=>{if(n(d.alternativer[xi])===n(d.fasit))x.classList.add('r');});fb.className='fb e v';fb.textContent='\\u2717 Feil. Riktig: '+d.fasit;div.classList.add('no');gP(div,0);}};al.appendChild(b);});pa.appendChild(div);}
 
-function normaliser(s) {
-  return String(s || '').toLowerCase().trim().replace(/[.,!?;:]/g, '').replace(/\\s+/g, ' ');
-}
+function mkOS(pa,d){mx++;const div=document.createElement('div');div.className='d';const ord=d.tekst.split(/\\s*\\/\\s*/).filter(Boolean);const st=[...ord].sort(()=>Math.random()-.5);div.innerHTML='<div class="dl"><span class="dn">'+d.bokstav+'</span><span class="dt">Sett ordene i riktig rekkef\\u00f8lge:</span></div><div class="os" id="sv"></div><div class="ob0" id="bk"></div><div class="br"><button class="bs">Sjekk</button><button class="bf">Vis fasit</button></div><div class="fb"></div><div class="fx"><strong>Fasit:</strong> '+e(d.fasit)+'</div>';const sv=div.querySelector('#sv'),bk=div.querySelector('#bk'),fb=div.querySelector('.fb');st.forEach(o=>{const b=document.createElement('span');b.className='op';b.textContent=o;b.onclick=()=>{if(b.classList.contains('u'))return;const v=document.createElement('span');v.className='op';v.textContent=o;v.onclick=()=>{b.classList.remove('u');v.remove();};sv.appendChild(v);b.classList.add('u');};bk.appendChild(b);});div.querySelector('.bs').onclick=()=>{const r=Array.from(sv.children).map(c=>c.textContent).join(' ');if(n(r)===n(d.fasit)){fb.className='fb o v';fb.textContent='\\u2713 Riktig!';div.classList.add('ok');gP(div,1);}else{fb.className='fb e v';fb.textContent='\\u2717 Ikke riktig.';}};div.querySelector('.bf').onclick=()=>{div.querySelector('.fx').classList.add('v');div.classList.add('no');gP(div,0);};pa.appendChild(div);}
 
-function escapeHtml(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
+function mkMA(pa,oppg){const w=document.createElement('div');const hr=[...oppg.delopgaver].map(d=>d.match).sort(()=>Math.random()-.5);w.innerHTML='<div class="ma"><div class="mk"><div class="mkh">Kolonne A</div></div><div class="mk"><div class="mkh">Kolonne B</div></div></div><div class="br" style="margin-top:.8rem"><button class="bf">Vis fasit</button></div><div class="fx"></div>';const kv=w.querySelector('.mk:first-child'),kh=w.querySelector('.mk:last-child');let vv=null;oppg.delopgaver.forEach(d=>{mx++;const el=document.createElement('div');el.className='me d';el.dataset.f=d.match;el.textContent=d.bokstav+') '+d.tekst;el.onclick=()=>{if(el.classList.contains('k'))return;kv.querySelectorAll('.me').forEach(x=>x.classList.remove('s'));el.classList.add('s');vv=el;};kv.appendChild(el);});hr.forEach(m=>{const el=document.createElement('div');el.className='me';el.textContent=m;el.onclick=()=>{if(el.classList.contains('k')||!vv)return;if(n(vv.dataset.f)===n(m)){vv.classList.remove('s');vv.classList.add('k','ok');el.classList.add('k');gP(vv,1);vv=null;}else{el.classList.add('ff');setTimeout(()=>el.classList.remove('ff'),500);}};kh.appendChild(el);});const fx=w.querySelector('.fx');fx.innerHTML=oppg.delopgaver.map(d=>'<strong>'+d.bokstav+')</strong> '+e(d.tekst)+' \\u2192 '+e(d.match)).join('<br>');w.querySelector('.bf').onclick=()=>{fx.classList.add('v');kv.querySelectorAll('.me:not(.k)').forEach(el=>{el.classList.add('no');gP(el,0);});};pa.appendChild(w);}
 
-// ── Bygg fagtekst med klikkbare ordliste-ord ────────────────────────────────
-function bygTekstInnhold(innhold) {
-  let html = escapeHtml(innhold);
-  // Erstatt ordlisteord med klikkbare lenker
-  DATA.ordliste.forEach(o => {
-    // Strip artikkel/å-merke for matching
-    const baseOrd = o.norsk.replace(/^(en |ei |et |å )/i, '');
-    if (baseOrd.length < 3) return;
-    const regex = new RegExp('\\\\b(' + baseOrd.replace(/[.*+?^\${}()|[\\]\\\\]/g, '\\\\$&') + ')\\\\b', 'gi');
-    const tooltip = escapeHtml((o.forklaring || '') + (o.oversettelse ? ' (' + o.oversettelse + ')' : ''));
-    html = html.replace(regex, '<span class="ord-link" title="' + tooltip + '">$1</span>');
-  });
-  return html;
-}
+function mkAA(pa,d){mx++;const div=document.createElement('div');div.className='d';div.innerHTML='<div class="dl"><span class="dn">'+d.bokstav+'</span><span class="dt">'+e(d.tekst)+'</span></div><input type="text" class="si0" placeholder="Skriv svaret ditt\\u2026"><div class="br"><button class="bs">Sjekk</button><button class="bf">Vis eksempelsvar</button></div><div class="fb"></div><div class="fx"><strong>Eksempelsvar:</strong> '+e(d.fasit||'')+'</div>';const inp=div.querySelector('input'),fb=div.querySelector('.fb');div.querySelector('.bs').onclick=()=>{const s=n(inp.value);const fw=n(d.fasit).split(' ').filter(w=>w.length>3);const tr=fw.filter(w=>s.includes(w)).length;if(fw.length>0&&tr/fw.length>=0.4){fb.className='fb o v';fb.textContent='\\u2713 Godt svar!';div.classList.add('ok');gP(div,1);}else if(s.length>3){fb.className='fb e v';fb.textContent='Sjekk eksempelsvaret.';div.querySelector('.fx').classList.add('v');gP(div,0);}else{fb.className='fb e v';fb.textContent='Skriv litt mer\\u2026';}};div.querySelector('.bf').onclick=()=>{div.querySelector('.fx').classList.add('v');if(div.dataset.d!=='1')gP(div,0);};pa.appendChild(div);}
 
-// ── Oppgavetype: Leseforståelse / skriv_muntlig (åpent svar) ────────────────
-function bygAapenOppgave(seksjon) {
-  const div = document.createElement('div');
-  div.innerHTML = '<div class="oppgave-header">📝 Oppgave ' + seksjon.nummer + ': ' + escapeHtml(seksjon.tittel) +
-    (seksjon.tilknyttet_tekst && seksjon.tilknyttet_tekst !== 'Generell'
-      ? '<span class="oppg-type-badge">' + escapeHtml(seksjon.tilknyttet_tekst) + '</span>' : '') + '</div>' +
-    '<div class="oppgave-instruksjon">' + escapeHtml(seksjon.instruksjon) + '</div>';
+// \\u2550 BYGG SIDER \\u2550
+const tekster=D.seksjoner.filter(s=>s.type==='tekst');
+aS('s-t','\\ud83d\\udcd6','Fagtekster',s=>{s.innerHTML='<h2 class="st"><span class="badge">\\ud83d\\udcd6</span> Fagtekster</h2><p class="si">'+e(D.intro)+'</p>';tekster.forEach(t=>{s.innerHTML+='<h3 style="color:var(--secondary);margin:1.5rem 0 .5rem;font-size:1.15rem">\\ud83d\\udcc4 Tekst '+t.nummer+': '+e(t.tittel)+'</h3><div class="tb">'+tO(t.innhold)+'</div>';});});
 
-  seksjon.delopgaver.forEach(d => {
-    totalOppgaver++;
-    const id = 'oppg-' + seksjon.nummer + '-' + d.bokstav;
-    const item = document.createElement('div');
-    item.className = 'delopg';
-    item.innerHTML =
-      '<span class="delopg-bokstav">' + d.bokstav + '</span>' +
-      '<span class="delopg-tekst">' + escapeHtml(d.tekst) + '</span>' +
-      '<textarea class="svar-textarea" id="' + id + '" placeholder="Skriv ditt svar her…"></textarea>' +
-      '<div class="knapp-rad">' +
-        '<button class="vis-btn" onclick="visEksempel(\\''+id+'\\', this)">📖 Vis eksempelsvar</button>' +
-      '</div>' +
-      '<div class="fasit-boks" id="fasit-' + id + '"><strong>Eksempelsvar:</strong> ' + escapeHtml(d.fasit || 'Eget svar.') + '</div>';
-    item.querySelector('textarea').addEventListener('input', function() {
-      if (this.value.trim().length > 5) markerLost(item);
-    });
-    div.appendChild(item);
-  });
-  return div;
-}
+const leseO=D.seksjoner.filter(s=>s.type==='oppgave'&&s.oppgavetype==='leseforst\\u00e5else');
+if(leseO.length>0){aS('s-l','\\ud83d\\udcdd','Leseforst\\u00e5else',s=>{s.innerHTML='<h2 class="st"><span class="badge">\\ud83d\\udcdd</span> Leseforst\\u00e5else</h2><p class="si">Les fagtekstene og svar p\\u00e5 sp\\u00f8rsm\\u00e5lene.</p>';leseO.forEach(oppg=>{const k=document.createElement('div');k.className='ok0';k.innerHTML='<div class="oh">Oppgave '+oppg.nummer+': '+e(oppg.tittel)+'</div><div class="ob"><div class="oi">'+e(oppg.instruksjon)+'</div></div>';const b=k.querySelector('.ob');oppg.delopgaver.forEach(d=>mkAA(b,d));s.appendChild(k);});});}
 
-window.visEksempel = function(id, btn) {
-  document.getElementById('fasit-' + id).classList.add('synlig');
-  btn.disabled = true;
-  btn.textContent = '✓ Vist';
-  markerLost(btn.closest('.delopg'));
-};
+const gvO=D.seksjoner.filter(s=>s.type==='oppgave'&&(s.oppgavetype==='grammatikk'||s.oppgavetype==='vokabular'));
+if(gvO.length>0){aS('s-gv','\\u270f\\ufe0f','Grammatikk & Vokabular',s=>{s.innerHTML='<h2 class="st"><span class="badge">\\u270f\\ufe0f</span> Grammatikk & Vokabular</h2><p class="si">\\u00d8v p\\u00e5 ord og grammatikk fra tekstene.</p>';gvO.forEach(oppg=>{const k=document.createElement('div');k.className='ok0';k.innerHTML='<div class="oh">Oppgave '+oppg.nummer+': '+e(oppg.tittel)+'</div><div class="ob"><div class="oi">'+e(oppg.instruksjon)+'</div></div>';const b=k.querySelector('.ob');oppg.delopgaver.forEach(d=>mkFI(b,d));s.appendChild(k);});});}
 
-// ── Oppgavetype: Multiple choice (grammatikk) ───────────────────────────────
-function bygMultipleChoice(d, idx, gramNr) {
-  totalOppgaver++;
-  const id = 'mc-' + gramNr + '-' + d.bokstav;
-  const item = document.createElement('div');
-  item.className = 'delopg';
-  item.innerHTML =
-    '<span class="delopg-bokstav">' + d.bokstav + '</span>' +
-    '<span class="delopg-tekst">' + escapeHtml(d.tekst) + '</span>' +
-    '<div class="alternativ-rad" id="' + id + '"></div>' +
-    '<div class="feedback" id="fb-' + id + '"></div>';
-  const altDiv = item.querySelector('.alternativ-rad');
-  d.alternativer.forEach((alt, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'alt-knapp';
-    btn.innerHTML = '<span class="alt-bokstav">' + ['A','B','C'][i] + '</span><span>' + escapeHtml(alt) + '</span>';
-    btn.onclick = function() {
-      // Disable alle
-      altDiv.querySelectorAll('.alt-knapp').forEach(b => b.disabled = true);
-      const fb = item.querySelector('.feedback');
-      if (normaliser(alt) === normaliser(d.fasit)) {
-        btn.classList.add('korrekt');
-        fb.className = 'feedback ok synlig';
-        fb.textContent = '✓ Riktig!';
-        item.classList.add('korrekt');
-      } else {
-        btn.classList.add('feil');
-        // Vis riktig
-        altDiv.querySelectorAll('.alt-knapp').forEach((b, bi) => {
-          if (normaliser(d.alternativer[bi]) === normaliser(d.fasit)) b.classList.add('korrekt');
-        });
-        fb.className = 'feedback error synlig';
-        fb.textContent = '✗ Feil. Riktig svar: ' + d.fasit;
-        item.classList.add('feil');
-      }
-      markerLost(item);
-    };
-    altDiv.appendChild(btn);
-  });
-  return item;
-}
+if(D.grammatikkData){const gd=D.grammatikkData;aS('s-g','\\ud83d\\udcd8','Grammatikk: '+gd.tema,s=>{s.innerHTML='<h2 class="st"><span class="badge">\\ud83d\\udcd8</span> '+e(gd.tema)+'</h2><div class="gi"><h4>\\ud83d\\udcd8 Forklaring</h4><p>'+e(gd.forklaring)+'</p></div>';gd.oppgaver.forEach(oppg=>{const ik={fyll_inn:'\\u270f\\ufe0f',multiple_choice:'\\u2611\\ufe0f',ordstilling:'\\ud83d\\udd00',matching:'\\ud83d\\udd17',korriger:'\\ud83d\\udd0d'}[oppg.type]||'\\ud83d\\udcdd';const k=document.createElement('div');k.className='ok0';k.innerHTML='<div class="oh g">'+ik+' G'+oppg.nummer+': '+e(oppg.tittel)+'</div><div class="ob"><div class="oi">'+e(oppg.instruksjon)+'</div></div>';const b=k.querySelector('.ob');if(oppg.type==='multiple_choice')oppg.delopgaver.forEach(d=>mkMC(b,d));else if(oppg.type==='ordstilling')oppg.delopgaver.forEach(d=>mkOS(b,d));else if(oppg.type==='matching')mkMA(b,oppg);else oppg.delopgaver.forEach(d=>mkFI(b,d));s.appendChild(k);});});}
 
-// ── Oppgavetype: Fyll inn / korriger (sjekk mot fasit) ──────────────────────
-function bygFyllInn(d, gramNr, type) {
-  totalOppgaver++;
-  const id = type + '-' + gramNr + '-' + d.bokstav;
-  const item = document.createElement('div');
-  item.className = 'delopg';
-  item.innerHTML =
-    '<span class="delopg-bokstav">' + d.bokstav + '</span>' +
-    '<span class="delopg-tekst">' + escapeHtml(d.tekst) + '</span>' +
-    '<input type="text" class="svar-input" id="' + id + '" placeholder="Skriv svaret…">' +
-    '<div class="knapp-rad">' +
-      '<button class="sjekk-btn">Sjekk svar</button>' +
-      '<button class="vis-btn">Vis fasit</button>' +
-    '</div>' +
-    '<div class="feedback" id="fb-' + id + '"></div>' +
-    '<div class="fasit-boks" id="fasit-' + id + '"><strong>Fasit:</strong> ' + escapeHtml(d.fasit) + '</div>';
-  const inp = item.querySelector('input');
-  const fb = item.querySelector('.feedback');
-  const btns = item.querySelectorAll('button');
-  btns[0].onclick = function() {
-    if (normaliser(inp.value) === normaliser(d.fasit)) {
-      fb.className = 'feedback ok synlig';
-      fb.textContent = '✓ Riktig!';
-      item.classList.add('korrekt');
-    } else {
-      fb.className = 'feedback error synlig';
-      fb.textContent = '✗ Ikke helt riktig. Prøv igjen, eller klikk «Vis fasit».';
-    }
-    markerLost(item);
-  };
-  btns[1].onclick = function() {
-    item.querySelector('.fasit-boks').classList.add('synlig');
-    markerLost(item);
-  };
-  return item;
-}
+aS('s-o','\\ud83d\\udcda','Ordliste',s=>{s.innerHTML='<h2 class="st"><span class="badge">\\ud83d\\udcda</span> Viktige ord og uttrykk</h2><p class="si">Ordene du har m\\u00f8tt i tekstene.</p><div class="og"></div>';const g=s.querySelector('.og');D.ordliste.forEach(o=>{const k=document.createElement('div');k.className='oc';k.innerHTML='<div class="on">'+e(o.norsk)+'</div><div class="of">'+e(o.forklaring||'')+'</div>'+(o.oversettelse?'<div class="oo">'+e(D.hjelpesprak||'')+': '+e(o.oversettelse)+'</div>':'');g.appendChild(k);});});
 
-// ── Oppgavetype: Ordstilling (klikk på ord i rekkefølge) ────────────────────
-function bygOrdstilling(d, gramNr) {
-  totalOppgaver++;
-  const id = 'os-' + gramNr + '-' + d.bokstav;
-  const item = document.createElement('div');
-  item.className = 'delopg';
-  const ord = d.tekst.split(/\\s*\\/\\s*/).filter(o => o);
-  // Stokk ordene
-  const stokket = [...ord].sort(() => Math.random() - 0.5);
-  item.innerHTML =
-    '<span class="delopg-bokstav">' + d.bokstav + '</span>' +
-    '<span class="delopg-tekst">Sett ordene i riktig rekkefølge:</span>' +
-    '<div class="ord-svar" id="svar-' + id + '"></div>' +
-    '<div class="ord-bank" id="bank-' + id + '"></div>' +
-    '<div class="knapp-rad">' +
-      '<button class="sjekk-btn">Sjekk</button>' +
-      '<button class="vis-btn" onclick="this.previousElementSibling.disabled=true;document.getElementById(\\'fasit-'+id+'\\').classList.add(\\'synlig\\');markerLost(this.closest(\\'.delopg\\'))">Nullstill / vis fasit</button>' +
-    '</div>' +
-    '<div class="feedback" id="fb-' + id + '"></div>' +
-    '<div class="fasit-boks" id="fasit-' + id + '"><strong>Fasit:</strong> ' + escapeHtml(d.fasit) + '</div>';
-  const bank = item.querySelector('#bank-' + id);
-  const svar = item.querySelector('#svar-' + id);
-  stokket.forEach(o => {
-    const b = document.createElement('span');
-    b.className = 'ord-brikke';
-    b.textContent = o;
-    b.onclick = function() {
-      if (b.classList.contains('brukt')) return;
-      const valgt = document.createElement('span');
-      valgt.className = 'ord-brikke';
-      valgt.textContent = o;
-      valgt.onclick = function() {
-        b.classList.remove('brukt');
-        valgt.remove();
-      };
-      svar.appendChild(valgt);
-      b.classList.add('brukt');
-    };
-    bank.appendChild(b);
-  });
-  item.querySelector('.sjekk-btn').onclick = function() {
-    const fb = item.querySelector('.feedback');
-    const elevenSvar = Array.from(svar.children).map(c => c.textContent).join(' ');
-    if (normaliser(elevenSvar) === normaliser(d.fasit)) {
-      fb.className = 'feedback ok synlig';
-      fb.textContent = '✓ Riktig!';
-      item.classList.add('korrekt');
-    } else {
-      fb.className = 'feedback error synlig';
-      fb.textContent = '✗ Ikke riktig. Prøv igjen.';
-    }
-    markerLost(item);
-  };
-  return item;
-}
-
-// ── Oppgavetype: Matching (klikk-par mellom kolonner) ───────────────────────
-function bygMatching(oppg, gramNr) {
-  const wrap = document.createElement('div');
-  totalOppgaver += oppg.delopgaver.length;
-  const venstre = oppg.delopgaver.map(d => ({ tekst: d.tekst, match: d.match, bokstav: d.bokstav }));
-  const hoyre = [...oppg.delopgaver].map(d => d.match).sort(() => Math.random() - 0.5);
-
-  wrap.innerHTML = '<div class="match-grid"><div class="match-kolonne" id="m-v-'+gramNr+'"></div><div class="match-kolonne" id="m-h-'+gramNr+'"></div></div><div class="knapp-rad" style="margin-top:1rem;"><button class="vis-btn" onclick="visMatchFasit('+gramNr+')">Vis fasit</button></div><div class="fasit-boks" id="match-fasit-'+gramNr+'"></div>';
-  const v = wrap.querySelector('#m-v-' + gramNr);
-  const h = wrap.querySelector('#m-h-' + gramNr);
-  let valgtVenstre = null;
-  const koblet = {};
-
-  venstre.forEach((d, i) => {
-    const el = document.createElement('div');
-    el.className = 'match-item';
-    el.dataset.bokstav = d.bokstav;
-    el.dataset.fasit = d.match;
-    el.textContent = d.bokstav + ') ' + d.tekst;
-    el.onclick = function() {
-      if (el.classList.contains('koblet')) return;
-      v.querySelectorAll('.match-item').forEach(x => x.classList.remove('valgt'));
-      el.classList.add('valgt');
-      valgtVenstre = el;
-    };
-    v.appendChild(el);
-  });
-
-  hoyre.forEach((m) => {
-    const el = document.createElement('div');
-    el.className = 'match-item';
-    el.dataset.tekst = m;
-    el.textContent = m;
-    el.onclick = function() {
-      if (el.classList.contains('koblet')) return;
-      if (!valgtVenstre) return;
-      if (normaliser(valgtVenstre.dataset.fasit) === normaliser(m)) {
-        valgtVenstre.classList.remove('valgt');
-        valgtVenstre.classList.add('koblet');
-        el.classList.add('koblet');
-        koblet[valgtVenstre.dataset.bokstav] = m;
-        markerLost(valgtVenstre);
-        valgtVenstre = null;
-      } else {
-        el.style.borderColor = 'var(--red)';
-        setTimeout(() => el.style.borderColor = '', 600);
-      }
-    };
-    h.appendChild(el);
-  });
-
-  // Lagre fasit-data globalt
-  window['matchFasit_' + gramNr] = venstre.map(d => d.bokstav + ') ' + d.tekst + ' → ' + d.match).join('<br>');
-  return wrap;
-}
-
-window.visMatchFasit = function(gramNr) {
-  const fb = document.getElementById('match-fasit-' + gramNr);
-  fb.innerHTML = '<strong>Fasit:</strong><br>' + window['matchFasit_' + gramNr];
-  fb.classList.add('synlig');
-};
-
-window.markerLost = markerLost;
-
-// ── Bygg hele dokumentet ────────────────────────────────────────────────────
-function byggInnhold() {
-  const main = document.getElementById('innhold');
-
-  // Innledning
-  const innled = document.createElement('section');
-  innled.className = 'kort';
-  innled.innerHTML = '<h2 class="seksjon-tittel">Innledning</h2><p>' + escapeHtml(DATA.intro) + '</p>';
-  main.appendChild(innled);
-
-  // Tekster og oppgaver
-  const tekstSeksjon = document.createElement('section');
-  tekstSeksjon.className = 'kort';
-  tekstSeksjon.innerHTML = '<h2 class="seksjon-tittel">Fagtekster og oppgaver</h2>';
-
-  DATA.seksjoner.forEach(s => {
-    if (s.type === 'tekst') {
-      const tekstDiv = document.createElement('div');
-      tekstDiv.style.marginTop = '1.5rem';
-      tekstDiv.innerHTML =
-        '<h3 class="tekst-tittel"><span class="tekst-badge">📄 Tekst ' + s.nummer + '</span> ' + escapeHtml(s.tittel) + '</h3>' +
-        '<div class="tekst-innhold">' + bygTekstInnhold(s.innhold) + '</div>';
-      tekstSeksjon.appendChild(tekstDiv);
-    } else if (s.type === 'oppgave') {
-      tekstSeksjon.appendChild(bygAapenOppgave(s));
-    }
-  });
-  main.appendChild(tekstSeksjon);
-
-  // Grammatikkblokk
-  if (DATA.grammatikkData) {
-    const gd = DATA.grammatikkData;
-    const gramSeksjon = document.createElement('section');
-    gramSeksjon.className = 'kort';
-    gramSeksjon.innerHTML =
-      '<h2 class="seksjon-tittel">Grammatikk: ' + escapeHtml(gd.tema) + '</h2>' +
-      '<div class="gram-forklaring"><h4>📘 Forklaring</h4><p>' + escapeHtml(gd.forklaring) + '</p></div>';
-
-    gd.oppgaver.forEach(oppg => {
-      const ikon = { fyll_inn: '✏️', multiple_choice: '☑️', ordstilling: '🔀', matching: '🔗', korriger: '🔍' }[oppg.type] || '📝';
-      const oppgDiv = document.createElement('div');
-      oppgDiv.style.marginTop = '1.5rem';
-      oppgDiv.innerHTML =
-        '<div class="oppgave-header gram-oppgave-header" style="background:var(--secondary)">' +
-        ikon + ' Oppgave G' + oppg.nummer + ': ' + escapeHtml(oppg.tittel) + '</div>' +
-        '<div class="oppgave-instruksjon">' + escapeHtml(oppg.instruksjon) + '</div>';
-
-      if (oppg.type === 'multiple_choice') {
-        oppg.delopgaver.forEach(d => oppgDiv.appendChild(bygMultipleChoice(d, oppg.nummer)));
-      } else if (oppg.type === 'fyll_inn' || oppg.type === 'korriger') {
-        oppg.delopgaver.forEach(d => oppgDiv.appendChild(bygFyllInn(d, oppg.nummer, oppg.type)));
-      } else if (oppg.type === 'ordstilling') {
-        oppg.delopgaver.forEach(d => oppgDiv.appendChild(bygOrdstilling(d, oppg.nummer)));
-      } else if (oppg.type === 'matching') {
-        oppgDiv.appendChild(bygMatching(oppg, oppg.nummer));
-      }
-      gramSeksjon.appendChild(oppgDiv);
-    });
-    main.appendChild(gramSeksjon);
-  }
-
-  // Ordliste
-  const ordSeksjon = document.createElement('section');
-  ordSeksjon.className = 'kort';
-  let ordHtml = '<h2 class="seksjon-tittel">Viktige ord og uttrykk</h2><table class="ordliste-tabell"><thead><tr><th>Norsk</th><th>Forklaring</th>';
-  if (DATA.hjelpesprak) ordHtml += '<th>' + escapeHtml(DATA.hjelpesprak) + '</th>';
-  ordHtml += '</tr></thead><tbody>';
-  DATA.ordliste.forEach(o => {
-    ordHtml += '<tr><td class="ord-norsk">' + escapeHtml(o.norsk) + '</td><td>' + escapeHtml(o.forklaring || '') + '</td>';
-    if (DATA.hjelpesprak) ordHtml += '<td><em>' + escapeHtml(o.oversettelse || '') + '</em></td>';
-    ordHtml += '</tr>';
-  });
-  ordHtml += '</tbody></table>';
-  ordSeksjon.innerHTML = ordHtml;
-  main.appendChild(ordSeksjon);
-
-  oppdaterFremdrift();
-}
-
-byggInnhold();
+if(sd.length>0)vS(sd[0]);
+uS();
 </script>
 </body>
 </html>`;
