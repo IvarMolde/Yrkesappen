@@ -995,7 +995,7 @@ function mkAA(pa,d){mx++;const div=document.createElement('div');div.className='
 
 function mkOS(pa,d){mx++;const div=document.createElement('div');div.className='d';const ord=d.tekst.split(/\\s*\\/\\s*/).filter(Boolean);const st=[...ord].sort(()=>Math.random()-.5);div.innerHTML='<div class="dl"><span class="dn">'+d.bokstav+'</span><span class="dt">Sett ordene i riktig rekkef\\u00f8lge:</span></div><div class="os"></div><div class="ob0"></div><div class="br"><button class="bs">Sjekk</button><button class="bf">Vis fasit</button></div><div class="fb"></div><div class="fx"><strong>Fasit:</strong> '+e(d.fasit)+'</div>';const sv=div.querySelector('.os'),bk=div.querySelector('.ob0'),fb=div.querySelector('.fb');st.forEach(o=>{const b=document.createElement('span');b.className='op';b.textContent=o;b.onclick=()=>{if(b.classList.contains('u'))return;const v=document.createElement('span');v.className='op';v.textContent=o;v.onclick=()=>{b.classList.remove('u');v.remove();};sv.appendChild(v);b.classList.add('u');};bk.appendChild(b);});div.querySelector('.bs').onclick=()=>{const r=Array.from(sv.children).map(c=>c.textContent).join(' ');if(n(r)===n(d.fasit)){fb.className='fb o v';fb.textContent='\\u2713 Riktig!';div.classList.add('ok');gP(div,1);}else{fb.className='fb e v';fb.textContent='\\u2717 Ikke riktig.';}};div.querySelector('.bf').onclick=()=>{div.querySelector('.fx').classList.add('v');div.classList.add('no');gP(div,0);};pa.appendChild(div);}
 
-function mkMA(pa,oppg){const w=document.createElement('div');const hr=[...oppg.delopgaver].map(d=>d.match).sort(()=>Math.random()-.5);const kvId='kv'+Math.random().toString(36).slice(2,6);const khId='kh'+Math.random().toString(36).slice(2,6);w.innerHTML='<div class="ma"><div class="mk" id="'+kvId+'"><div class="mkh">Kolonne A</div></div><div class="mk" id="'+khId+'"><div class="mkh">Kolonne B</div></div></div><div class="br" style="margin-top:.8rem"><button class="bf">Vis fasit</button></div><div class="fx"></div>';const kv=document.getElementById(kvId)||w.querySelector('#'+kvId);const kh=document.getElementById(khId)||w.querySelector('#'+khId);let vv=null;oppg.delopgaver.forEach(d=>{mx++;const el=document.createElement('div');el.className='me d';el.dataset.f=d.match;el.textContent=d.bokstav+') '+d.tekst;el.onclick=()=>{if(el.classList.contains('k'))return;kv.querySelectorAll('.me').forEach(x=>x.classList.remove('s'));el.classList.add('s');vv=el;};kv.appendChild(el);});hr.forEach(m=>{const el=document.createElement('div');el.className='me';el.textContent=m;el.onclick=()=>{if(el.classList.contains('k')||!vv)return;if(n(vv.dataset.f)===n(m)){vv.classList.remove('s');vv.classList.add('k','ok');el.classList.add('k');gP(vv,1);vv=null;}else{el.classList.add('ff');setTimeout(()=>el.classList.remove('ff'),500);}};kh.appendChild(el);});const fx=w.querySelector('.fx');fx.innerHTML=oppg.delopgaver.map(d=>'<strong>'+d.bokstav+')</strong> '+e(d.tekst)+' \\u2192 '+e(d.match)).join('<br>');w.querySelector('.bf').onclick=()=>{fx.classList.add('v');kv.querySelectorAll('.me:not(.k)').forEach(el=>{el.classList.add('no');gP(el,0);});};pa.appendChild(w);}
+function mkMA(pa,oppg){const w=document.createElement('div');const hr=[...oppg.delopgaver].map(d=>d.match).sort(()=>Math.random()-.5);w.innerHTML='<div class="ma"><div class="mk"></div><div class="mk"></div></div><div class="br" style="margin-top:.8rem"><button class="bf">Vis fasit</button></div><div class="fx"></div>';const cols=w.querySelectorAll('.mk');const kv=cols[0];const kh=cols[1];kv.innerHTML='<div class="mkh">Kolonne A</div>';kh.innerHTML='<div class="mkh">Kolonne B</div>';let vv=null;oppg.delopgaver.forEach(d=>{mx++;const el=document.createElement('div');el.className='me d';el.dataset.f=d.match;el.textContent=d.bokstav+') '+d.tekst;el.onclick=()=>{if(el.classList.contains('k'))return;kv.querySelectorAll('.me').forEach(x=>x.classList.remove('s'));el.classList.add('s');vv=el;};kv.appendChild(el);});hr.forEach(m=>{const el=document.createElement('div');el.className='me';el.textContent=m;el.onclick=()=>{if(el.classList.contains('k')||!vv)return;if(n(vv.dataset.f)===n(m)){vv.classList.remove('s');vv.classList.add('k','ok');el.classList.add('k');gP(vv,1);vv=null;}else{el.classList.add('ff');setTimeout(()=>el.classList.remove('ff'),500);}};kh.appendChild(el);});const fx=w.querySelector('.fx');fx.innerHTML=oppg.delopgaver.map(d=>'<strong>'+d.bokstav+')</strong> '+e(d.tekst)+' \\u2192 '+e(d.match)).join('<br>');w.querySelector('.bf').onclick=()=>{fx.classList.add('v');kv.querySelectorAll('.me:not(.k)').forEach(el=>{el.classList.add('no');gP(el,0);});};pa.appendChild(w);}
 
 // Smart dispatcher for leseforståelse delopgaver
 function mkLese(pa,d){
@@ -1013,9 +1013,7 @@ const leseO=D.seksjoner.filter(s=>s.type==='oppgave'&&s.oppgavetype==='leseforst
 aS('s-t','\\ud83d\\udcd6','Fagtekst og leseforst\\u00e5else',s=>{
   s.innerHTML='<h2 class="st"><span class="badge">\\ud83d\\udcd6</span> Fagtekst og leseforst\\u00e5else</h2><p class="si">'+e(D.intro)+'</p>';
   tekster.forEach(t=>{
-    // Tekst
-    s.innerHTML+='<h3 style="color:var(--secondary);margin:1.5rem 0 .5rem;font-size:1.15rem">\\ud83d\\udcc4 Tekst '+t.nummer+': '+e(t.tittel)+'</h3><div class="tb">'+tO(t.innhold)+'</div>';
-    // Leseforståelsesoppgave(r) knyttet til denne teksten
+    s.insertAdjacentHTML('beforeend','<h3 style="color:var(--secondary);margin:1.5rem 0 .5rem;font-size:1.15rem">\\ud83d\\udcc4 Tekst '+t.nummer+': '+e(t.tittel)+'</h3><div class="tb">'+tO(t.innhold)+'</div>');
     const tilknyttet=leseO.filter(o=>o.tilknyttet_tekst==='Tekst '+t.nummer);
     tilknyttet.forEach(oppg=>{
       const k=document.createElement('div');
@@ -1029,11 +1027,42 @@ aS('s-t','\\ud83d\\udcd6','Fagtekst og leseforst\\u00e5else',s=>{
 });
 
 const gvO=D.seksjoner.filter(s=>s.type==='oppgave'&&(s.oppgavetype==='grammatikk'||s.oppgavetype==='vokabular'));
-if(gvO.length>0){aS('s-gv','\\u270f\\ufe0f','Grammatikk & Vokabular',s=>{s.innerHTML='<h2 class="st"><span class="badge">\\u270f\\ufe0f</span> Grammatikk & Vokabular</h2><p class="si">\\u00d8v p\\u00e5 ord og grammatikk fra tekstene.</p>';gvO.forEach(oppg=>{const k=document.createElement('div');k.className='ok0';k.innerHTML='<div class="oh">Oppgave '+oppg.nummer+': '+e(oppg.tittel)+'</div><div class="ob"><div class="oi">'+e(oppg.instruksjon)+'</div></div>';const b=k.querySelector('.ob');oppg.delopgaver.forEach(d=>mkFI(b,d));s.appendChild(k);});});}
+if(gvO.length>0){aS('s-gv','\\u270f\\ufe0f','Grammatikk & Vokabular',s=>{
+  s.innerHTML='<h2 class="st"><span class="badge">\\u270f\\ufe0f</span> Grammatikk & Vokabular</h2><p class="si">\\u00d8v p\\u00e5 ord og grammatikk fra tekstene.</p>';
+  gvO.forEach(oppg=>{
+    const k=document.createElement('div');k.className='ok0';
+    k.innerHTML='<div class="oh">Oppgave '+oppg.nummer+': '+e(oppg.tittel)+'</div><div class="ob"><div class="oi">'+e(oppg.instruksjon)+'</div></div>';
+    const b=k.querySelector('.ob');
+    oppg.delopgaver.forEach(d=>mkFI(b,d));
+    s.appendChild(k);
+  });
+});}
 
-if(D.grammatikkData){const gd=D.grammatikkData;aS('s-g','\\ud83d\\udcd8','Grammatikk: '+gd.tema,s=>{s.innerHTML='<h2 class="st"><span class="badge">\\ud83d\\udcd8</span> '+e(gd.tema)+'</h2><div class="gi"><h4>\\ud83d\\udcd8 Forklaring</h4><p>'+e(gd.forklaring)+'</p></div>';gd.oppgaver.forEach(oppg=>{const ik={fyll_inn:'\\u270f\\ufe0f',multiple_choice:'\\u2611\\ufe0f',ordstilling:'\\ud83d\\udd00',matching:'\\ud83d\\udd17',korriger:'\\ud83d\\udd0d'}[oppg.type]||'\\ud83d\\udcdd';const k=document.createElement('div');k.className='ok0';k.innerHTML='<div class="oh g">'+ik+' G'+oppg.nummer+': '+e(oppg.tittel)+'</div><div class="ob"><div class="oi">'+e(oppg.instruksjon)+'</div></div>';const b=k.querySelector('.ob');if(oppg.type==='multiple_choice')oppg.delopgaver.forEach(d=>mkMC(b,d));else if(oppg.type==='ordstilling')oppg.delopgaver.forEach(d=>mkOS(b,d));else if(oppg.type==='matching')mkMA(b,oppg);else oppg.delopgaver.forEach(d=>mkFI(b,d));s.appendChild(k);});});}
+if(D.grammatikkData){const gd=D.grammatikkData;aS('s-g','\\ud83d\\udcd8','Grammatikk: '+gd.tema,s=>{
+  s.innerHTML='<h2 class="st"><span class="badge">\\ud83d\\udcd8</span> '+e(gd.tema)+'</h2>';
+  s.insertAdjacentHTML('beforeend','<div class="gi"><h4>\\ud83d\\udcd8 Forklaring</h4><p>'+e(gd.forklaring)+'</p></div>');
+  gd.oppgaver.forEach(oppg=>{
+    const ik={fyll_inn:'\\u270f\\ufe0f',multiple_choice:'\\u2611\\ufe0f',ordstilling:'\\ud83d\\udd00',matching:'\\ud83d\\udd17',korriger:'\\ud83d\\udd0d'}[oppg.type]||'\\ud83d\\udcdd';
+    const k=document.createElement('div');k.className='ok0';
+    k.innerHTML='<div class="oh g">'+ik+' G'+oppg.nummer+': '+e(oppg.tittel)+'</div><div class="ob"><div class="oi">'+e(oppg.instruksjon)+'</div></div>';
+    const b=k.querySelector('.ob');
+    if(oppg.type==='multiple_choice')oppg.delopgaver.forEach(d=>mkMC(b,d));
+    else if(oppg.type==='ordstilling')oppg.delopgaver.forEach(d=>mkOS(b,d));
+    else if(oppg.type==='matching')mkMA(b,oppg);
+    else oppg.delopgaver.forEach(d=>mkFI(b,d));
+    s.appendChild(k);
+  });
+});}
 
-aS('s-o','\\ud83d\\udcda','Ordliste',s=>{s.innerHTML='<h2 class="st"><span class="badge">\\ud83d\\udcda</span> Viktige ord og uttrykk</h2><p class="si">Ordene du har m\\u00f8tt i tekstene.</p><div class="og"></div>';const g=s.querySelector('.og');D.ordliste.forEach(o=>{const k=document.createElement('div');k.className='oc';k.innerHTML='<div class="on">'+e(o.norsk)+'</div><div class="of">'+e(o.forklaring||'')+'</div>'+(o.oversettelse?'<div class="oo">'+e(D.hjelpesprak||'')+': '+e(o.oversettelse)+'</div>':'');g.appendChild(k);});});
+aS('s-o','\\ud83d\\udcda','Ordliste',s=>{
+  s.innerHTML='<h2 class="st"><span class="badge">\\ud83d\\udcda</span> Viktige ord og uttrykk</h2><p class="si">Ordene du har m\\u00f8tt i tekstene.</p><div class="og"></div>';
+  const g=s.querySelector('.og');
+  D.ordliste.forEach(o=>{
+    const k=document.createElement('div');k.className='oc';
+    k.innerHTML='<div class="on">'+e(o.norsk)+'</div><div class="of">'+e(o.forklaring||'')+'</div>'+(o.oversettelse?'<div class="oo">'+e(D.hjelpesprak||'')+': '+e(o.oversettelse)+'</div>':'');
+    g.appendChild(k);
+  });
+});
 
 if(sd.length>0)vS(sd[0]);
 uS();
