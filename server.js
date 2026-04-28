@@ -152,13 +152,31 @@ Heftet skal ha denne strukturen der tekster og oppgaver er FLETTET SAMMEN:
   "intro": "2-3 setninger om yrket tilpasset ${niva}-nivå",
   "seksjoner": [
     { "type": "tekst", "nummer": 1, "tittel": "Tekst 1 – [tema]", "innhold": "..." },
-    { "type": "oppgave", "nummer": 1, "tilknyttet_tekst": "Tekst 1", "oppgavetype": "leseforståelse", "tittel": "Leseforståelse – Tekst 1", "instruksjon": "Les Tekst 1 og svar på spørsmålene.", "delopgaver": [ { "bokstav": "a", "tekst": "...", "fasit": "Forventet svar i 1-2 setninger" }, { "bokstav": "b", "tekst": "...", "fasit": "..." }, { "bokstav": "c", "tekst": "...", "fasit": "..." }, { "bokstav": "d", "tekst": "...", "fasit": "..." }, { "bokstav": "e", "tekst": "...", "fasit": "..." } ] },
+    { "type": "oppgave", "nummer": 1, "tilknyttet_tekst": "Tekst 1", "oppgavetype": "leseforståelse", "tittel": "Leseforståelse – Tekst 1", "instruksjon": "Les Tekst 1 og løs oppgavene.", "delopgaver": [
+        { "bokstav": "a", "oppgtype": "riktig_galt", "tekst": "Påstand basert på teksten.", "fasit": "riktig" },
+        { "bokstav": "b", "oppgtype": "fyll_inn", "tekst": "Setning fra teksten med ___ som mangler.", "fasit": "riktig ord" },
+        { "bokstav": "c", "oppgtype": "finn_synonym", "tekst": "Finn et ord i teksten som betyr det samme som «[ord]».", "fasit": "synonym fra teksten" },
+        { "bokstav": "d", "oppgtype": "multiple_choice", "tekst": "Spørsmål om teksten.", "alternativer": ["alt1","alt2","alt3"], "fasit": "riktig alternativ" },
+        { "bokstav": "e", "oppgtype": "skriv_svar", "tekst": "Åpent spørsmål om teksten.", "fasit": "Eksempelsvar." }
+      ] },
     { "type": "oppgave", "nummer": 2, "tilknyttet_tekst": "Tekst 1", "oppgavetype": "grammatikk", "tittel": "Grammatikk", "instruksjon": "...", "delopgaver": [ { "bokstav": "a", "tekst": "...", "fasit": "..." }, { "bokstav": "b", "tekst": "...", "fasit": "..." }, { "bokstav": "c", "tekst": "...", "fasit": "..." }, { "bokstav": "d", "tekst": "...", "fasit": "..." }, { "bokstav": "e", "tekst": "...", "fasit": "..." } ] },
     { "type": "tekst", "nummer": 2, "tittel": "Tekst 2 – [tema]", "innhold": "..." },
-    { "type": "oppgave", "nummer": 3, "tilknyttet_tekst": "Tekst 2", "oppgavetype": "leseforståelse", "tittel": "...", "instruksjon": "...", "delopgaver": [ { "bokstav": "a", "tekst": "...", "fasit": "..." }, ...5 stk ] },
+    { "type": "oppgave", "nummer": 3, "tilknyttet_tekst": "Tekst 2", "oppgavetype": "leseforståelse", "tittel": "Leseforståelse – Tekst 2", "instruksjon": "Les Tekst 2 og løs oppgavene.", "delopgaver": [
+        { "bokstav": "a", "oppgtype": "riktig_galt", "tekst": "Påstand.", "fasit": "galt" },
+        { "bokstav": "b", "oppgtype": "fyll_inn", "tekst": "Setning med ___ .", "fasit": "ord" },
+        { "bokstav": "c", "oppgtype": "multiple_choice", "tekst": "Spørsmål.", "alternativer": ["a","b","c"], "fasit": "riktig" },
+        { "bokstav": "d", "oppgtype": "finn_synonym", "tekst": "Finn et ord som betyr...", "fasit": "ord" },
+        { "bokstav": "e", "oppgtype": "skriv_svar", "tekst": "Åpent spørsmål.", "fasit": "Eksempelsvar." }
+      ] },
     { "type": "oppgave", "nummer": 4, "tilknyttet_tekst": "Tekst 2", "oppgavetype": "vokabular", "tittel": "...", "instruksjon": "...", "delopgaver": [ ...5 stk med fasit ] },
     { "type": "tekst", "nummer": 3, "tittel": "Tekst 3 – [tema]", "innhold": "..." },
-    { "type": "oppgave", "nummer": 5, "tilknyttet_tekst": "Tekst 3", "oppgavetype": "leseforståelse", "tittel": "...", "instruksjon": "...", "delopgaver": [ ...5 stk med fasit ] },
+    { "type": "oppgave", "nummer": 5, "tilknyttet_tekst": "Tekst 3", "oppgavetype": "leseforståelse", "tittel": "Leseforståelse – Tekst 3", "instruksjon": "Les Tekst 3 og løs oppgavene.", "delopgaver": [
+        { "bokstav": "a", "oppgtype": "multiple_choice", "tekst": "Spørsmål.", "alternativer": ["a","b","c"], "fasit": "riktig" },
+        { "bokstav": "b", "oppgtype": "riktig_galt", "tekst": "Påstand.", "fasit": "riktig" },
+        { "bokstav": "c", "oppgtype": "fyll_inn", "tekst": "Setning med ___.", "fasit": "ord" },
+        { "bokstav": "d", "oppgtype": "finn_synonym", "tekst": "Finn et ord som betyr...", "fasit": "ord" },
+        { "bokstav": "e", "oppgtype": "skriv_svar", "tekst": "Åpent spørsmål.", "fasit": "Eksempelsvar." }
+      ] },
     { "type": "oppgave", "nummer": 6, "tilknyttet_tekst": "Generell", "oppgavetype": "grammatikk", "tittel": "...", "instruksjon": "...", "delopgaver": [ ...5 stk med fasit ] },
     { "type": "oppgave", "nummer": 7, "tilknyttet_tekst": "Generell", "oppgavetype": "vokabular", "tittel": "...", "instruksjon": "...", "delopgaver": [ ...5 stk med fasit ] },
     { "type": "oppgave", "nummer": 8, "tilknyttet_tekst": "Generell", "oppgavetype": "vokabular", "tittel": "Ord i kontekst", "instruksjon": "Bruk ordene fra ordlisten i riktig sammenheng.", "delopgaver": [ ...5 stk med fasit ] }
@@ -178,11 +196,16 @@ Heftet skal ha denne strukturen der tekster og oppgaver er FLETTET SAMMEN:
 STRENGE KRAV:
 - Fagtekstene MÅ være i den lengden angitt for ${niva}
 - Tekstene skal bli litt mer krevende fra Tekst 1 til Tekst 3
-- Alle oppgaver har nøyaktig 5 delopgaver (a–e)
-- Alle delopgaver MÅ ha "fasit"-felt med forventet svar/eksempelsvar
-- For leseforståelse: fasit er kort svar (1-2 setninger) basert på teksten
+- Alle leseforståelsesoppgaver har nøyaktig 5 delopgaver (a–e) med ULIKE oppgavetyper:
+  * "oppgtype": "riktig_galt" — påstand som er riktig eller galt. "fasit" MÅ være "riktig" eller "galt"
+  * "oppgtype": "fyll_inn" — setning fra teksten med ___ der ett ord mangler. "fasit" er det manglende ordet
+  * "oppgtype": "finn_synonym" — finn et ord i teksten som betyr det samme. "fasit" er synonymet fra teksten
+  * "oppgtype": "multiple_choice" — spørsmål med 3 alternativer. MÅ ha "alternativer": [...] og "fasit"
+  * "oppgtype": "skriv_svar" — åpent spørsmål. "fasit" er et eksempelsvar (1-2 setninger)
+- Hver leseforståelsesoppgave MÅ inneholde alle 5 oppgavetyper (én av hver, men i ulik rekkefølge per tekst)
+- Andre oppgaver (grammatikk, vokabular) har nøyaktig 5 delopgaver (a–e) med "fasit"
 - For vokabular: fasit er konkret riktig ord eller uttrykk
-- For grammatikk/vokabular: fasit er konkret riktig svar
+- For grammatikk: fasit er konkret riktig svar
 - Ordlisten: 12–16 ord
 - Legg til 10–12 seksjoner totalt
 
@@ -964,11 +987,25 @@ function mkFI(pa,d){mx++;const div=document.createElement('div');div.className='
 
 function mkMC(pa,d){mx++;const div=document.createElement('div');div.className='d';div.innerHTML='<div class="dl"><span class="dn">'+d.bokstav+'</span><span class="dt">'+e(d.tekst)+'</span></div><div class="al"></div><div class="fb"></div>';const al=div.querySelector('.al'),fb=div.querySelector('.fb');d.alternativer.forEach((a,i)=>{const b=document.createElement('button');b.className='ab';b.innerHTML='<span class="al0">'+['A','B','C'][i]+'</span><span>'+e(a)+'</span>';b.onclick=()=>{al.querySelectorAll('.ab').forEach(x=>x.disabled=true);if(n(a)===n(d.fasit)){b.classList.add('r');fb.className='fb o v';fb.textContent='\\u2713 Riktig!';div.classList.add('ok');gP(div,1);}else{b.classList.add('w');al.querySelectorAll('.ab').forEach((x,xi)=>{if(n(d.alternativer[xi])===n(d.fasit))x.classList.add('r');});fb.className='fb e v';fb.textContent='\\u2717 Feil. Riktig: '+d.fasit;div.classList.add('no');gP(div,0);}};al.appendChild(b);});pa.appendChild(div);}
 
-function mkOS(pa,d){mx++;const div=document.createElement('div');div.className='d';const ord=d.tekst.split(/\\s*\\/\\s*/).filter(Boolean);const st=[...ord].sort(()=>Math.random()-.5);div.innerHTML='<div class="dl"><span class="dn">'+d.bokstav+'</span><span class="dt">Sett ordene i riktig rekkef\\u00f8lge:</span></div><div class="os" id="sv"></div><div class="ob0" id="bk"></div><div class="br"><button class="bs">Sjekk</button><button class="bf">Vis fasit</button></div><div class="fb"></div><div class="fx"><strong>Fasit:</strong> '+e(d.fasit)+'</div>';const sv=div.querySelector('#sv'),bk=div.querySelector('#bk'),fb=div.querySelector('.fb');st.forEach(o=>{const b=document.createElement('span');b.className='op';b.textContent=o;b.onclick=()=>{if(b.classList.contains('u'))return;const v=document.createElement('span');v.className='op';v.textContent=o;v.onclick=()=>{b.classList.remove('u');v.remove();};sv.appendChild(v);b.classList.add('u');};bk.appendChild(b);});div.querySelector('.bs').onclick=()=>{const r=Array.from(sv.children).map(c=>c.textContent).join(' ');if(n(r)===n(d.fasit)){fb.className='fb o v';fb.textContent='\\u2713 Riktig!';div.classList.add('ok');gP(div,1);}else{fb.className='fb e v';fb.textContent='\\u2717 Ikke riktig.';}};div.querySelector('.bf').onclick=()=>{div.querySelector('.fx').classList.add('v');div.classList.add('no');gP(div,0);};pa.appendChild(div);}
+function mkRG(pa,d){mx++;const div=document.createElement('div');div.className='d';const riktig=n(d.fasit)==='riktig';div.innerHTML='<div class="dl"><span class="dn">'+d.bokstav+'</span><span class="dt">'+e(d.tekst)+'</span></div><div class="br"><button class="bs" data-v="riktig">\\u2705 Riktig</button><button class="bs" data-v="galt" style="background:var(--accent);color:var(--textDark)">\\u274c Galt</button></div><div class="fb"></div>';const fb=div.querySelector('.fb');div.querySelectorAll('.bs').forEach(b=>{b.onclick=()=>{div.querySelectorAll('.bs').forEach(x=>x.disabled=true);const valgt=b.dataset.v==='riktig';if(valgt===riktig){fb.className='fb o v';fb.textContent='\\u2713 Riktig!';div.classList.add('ok');gP(div,1);}else{fb.className='fb e v';fb.textContent='\\u2717 Feil. P\\u00e5standen er '+(riktig?'riktig':'galt')+'.';div.classList.add('no');gP(div,0);}};});pa.appendChild(div);}
 
-function mkMA(pa,oppg){const w=document.createElement('div');const hr=[...oppg.delopgaver].map(d=>d.match).sort(()=>Math.random()-.5);w.innerHTML='<div class="ma"><div class="mk"><div class="mkh">Kolonne A</div></div><div class="mk"><div class="mkh">Kolonne B</div></div></div><div class="br" style="margin-top:.8rem"><button class="bf">Vis fasit</button></div><div class="fx"></div>';const kv=w.querySelector('.mk:first-child'),kh=w.querySelector('.mk:last-child');let vv=null;oppg.delopgaver.forEach(d=>{mx++;const el=document.createElement('div');el.className='me d';el.dataset.f=d.match;el.textContent=d.bokstav+') '+d.tekst;el.onclick=()=>{if(el.classList.contains('k'))return;kv.querySelectorAll('.me').forEach(x=>x.classList.remove('s'));el.classList.add('s');vv=el;};kv.appendChild(el);});hr.forEach(m=>{const el=document.createElement('div');el.className='me';el.textContent=m;el.onclick=()=>{if(el.classList.contains('k')||!vv)return;if(n(vv.dataset.f)===n(m)){vv.classList.remove('s');vv.classList.add('k','ok');el.classList.add('k');gP(vv,1);vv=null;}else{el.classList.add('ff');setTimeout(()=>el.classList.remove('ff'),500);}};kh.appendChild(el);});const fx=w.querySelector('.fx');fx.innerHTML=oppg.delopgaver.map(d=>'<strong>'+d.bokstav+')</strong> '+e(d.tekst)+' \\u2192 '+e(d.match)).join('<br>');w.querySelector('.bf').onclick=()=>{fx.classList.add('v');kv.querySelectorAll('.me:not(.k)').forEach(el=>{el.classList.add('no');gP(el,0);});};pa.appendChild(w);}
+function mkSyn(pa,d){mx++;const div=document.createElement('div');div.className='d';div.innerHTML='<div class="dl"><span class="dn">'+d.bokstav+'</span><span class="dt">'+e(d.tekst)+'</span></div><input type="text" class="si0" placeholder="Skriv ordet\\u2026"><div class="br"><button class="bs">Sjekk</button><button class="bf">Vis fasit</button></div><div class="fb"></div><div class="fx"><strong>Fasit:</strong> '+e(d.fasit)+'</div>';const inp=div.querySelector('input'),fb=div.querySelector('.fb');div.querySelector('.bs').onclick=()=>{if(n(inp.value)===n(d.fasit)){fb.className='fb o v';fb.textContent='\\u2713 Riktig!';div.classList.add('ok');gP(div,1);}else{fb.className='fb e v';fb.textContent='\\u2717 Ikke riktig. Pr\\u00f8v igjen.';}};div.querySelector('.bf').onclick=()=>{div.querySelector('.fx').classList.add('v');div.classList.add('no');gP(div,0);};pa.appendChild(div);}
 
 function mkAA(pa,d){mx++;const div=document.createElement('div');div.className='d';div.innerHTML='<div class="dl"><span class="dn">'+d.bokstav+'</span><span class="dt">'+e(d.tekst)+'</span></div><input type="text" class="si0" placeholder="Skriv svaret ditt\\u2026"><div class="br"><button class="bs">Sjekk</button><button class="bf">Vis eksempelsvar</button></div><div class="fb"></div><div class="fx"><strong>Eksempelsvar:</strong> '+e(d.fasit||'')+'</div>';const inp=div.querySelector('input'),fb=div.querySelector('.fb');div.querySelector('.bs').onclick=()=>{const s=n(inp.value);const fw=n(d.fasit).split(' ').filter(w=>w.length>3);const tr=fw.filter(w=>s.includes(w)).length;if(fw.length>0&&tr/fw.length>=0.4){fb.className='fb o v';fb.textContent='\\u2713 Godt svar!';div.classList.add('ok');gP(div,1);}else if(s.length>3){fb.className='fb e v';fb.textContent='Sjekk eksempelsvaret.';div.querySelector('.fx').classList.add('v');gP(div,0);}else{fb.className='fb e v';fb.textContent='Skriv litt mer\\u2026';}};div.querySelector('.bf').onclick=()=>{div.querySelector('.fx').classList.add('v');if(div.dataset.d!=='1')gP(div,0);};pa.appendChild(div);}
+
+function mkOS(pa,d){mx++;const div=document.createElement('div');div.className='d';const ord=d.tekst.split(/\\s*\\/\\s*/).filter(Boolean);const st=[...ord].sort(()=>Math.random()-.5);div.innerHTML='<div class="dl"><span class="dn">'+d.bokstav+'</span><span class="dt">Sett ordene i riktig rekkef\\u00f8lge:</span></div><div class="os"></div><div class="ob0"></div><div class="br"><button class="bs">Sjekk</button><button class="bf">Vis fasit</button></div><div class="fb"></div><div class="fx"><strong>Fasit:</strong> '+e(d.fasit)+'</div>';const sv=div.querySelector('.os'),bk=div.querySelector('.ob0'),fb=div.querySelector('.fb');st.forEach(o=>{const b=document.createElement('span');b.className='op';b.textContent=o;b.onclick=()=>{if(b.classList.contains('u'))return;const v=document.createElement('span');v.className='op';v.textContent=o;v.onclick=()=>{b.classList.remove('u');v.remove();};sv.appendChild(v);b.classList.add('u');};bk.appendChild(b);});div.querySelector('.bs').onclick=()=>{const r=Array.from(sv.children).map(c=>c.textContent).join(' ');if(n(r)===n(d.fasit)){fb.className='fb o v';fb.textContent='\\u2713 Riktig!';div.classList.add('ok');gP(div,1);}else{fb.className='fb e v';fb.textContent='\\u2717 Ikke riktig.';}};div.querySelector('.bf').onclick=()=>{div.querySelector('.fx').classList.add('v');div.classList.add('no');gP(div,0);};pa.appendChild(div);}
+
+function mkMA(pa,oppg){const w=document.createElement('div');const hr=[...oppg.delopgaver].map(d=>d.match).sort(()=>Math.random()-.5);const kvId='kv'+Math.random().toString(36).slice(2,6);const khId='kh'+Math.random().toString(36).slice(2,6);w.innerHTML='<div class="ma"><div class="mk" id="'+kvId+'"><div class="mkh">Kolonne A</div></div><div class="mk" id="'+khId+'"><div class="mkh">Kolonne B</div></div></div><div class="br" style="margin-top:.8rem"><button class="bf">Vis fasit</button></div><div class="fx"></div>';const kv=document.getElementById(kvId)||w.querySelector('#'+kvId);const kh=document.getElementById(khId)||w.querySelector('#'+khId);let vv=null;oppg.delopgaver.forEach(d=>{mx++;const el=document.createElement('div');el.className='me d';el.dataset.f=d.match;el.textContent=d.bokstav+') '+d.tekst;el.onclick=()=>{if(el.classList.contains('k'))return;kv.querySelectorAll('.me').forEach(x=>x.classList.remove('s'));el.classList.add('s');vv=el;};kv.appendChild(el);});hr.forEach(m=>{const el=document.createElement('div');el.className='me';el.textContent=m;el.onclick=()=>{if(el.classList.contains('k')||!vv)return;if(n(vv.dataset.f)===n(m)){vv.classList.remove('s');vv.classList.add('k','ok');el.classList.add('k');gP(vv,1);vv=null;}else{el.classList.add('ff');setTimeout(()=>el.classList.remove('ff'),500);}};kh.appendChild(el);});const fx=w.querySelector('.fx');fx.innerHTML=oppg.delopgaver.map(d=>'<strong>'+d.bokstav+')</strong> '+e(d.tekst)+' \\u2192 '+e(d.match)).join('<br>');w.querySelector('.bf').onclick=()=>{fx.classList.add('v');kv.querySelectorAll('.me:not(.k)').forEach(el=>{el.classList.add('no');gP(el,0);});};pa.appendChild(w);}
+
+// Smart dispatcher for leseforståelse delopgaver
+function mkLese(pa,d){
+  const t=d.oppgtype||'skriv_svar';
+  if(t==='riktig_galt')mkRG(pa,d);
+  else if(t==='multiple_choice'&&d.alternativer)mkMC(pa,d);
+  else if(t==='fyll_inn')mkFI(pa,d);
+  else if(t==='finn_synonym')mkSyn(pa,d);
+  else mkAA(pa,d);
+}
 
 // \\u2550 BYGG SIDER \\u2550
 const tekster=D.seksjoner.filter(s=>s.type==='tekst');
@@ -985,7 +1022,7 @@ aS('s-t','\\ud83d\\udcd6','Fagtekst og leseforst\\u00e5else',s=>{
       k.className='ok0';
       k.innerHTML='<div class="oh">Oppgave '+oppg.nummer+': '+e(oppg.tittel)+'</div><div class="ob"><div class="oi">'+e(oppg.instruksjon)+'</div></div>';
       const b=k.querySelector('.ob');
-      oppg.delopgaver.forEach(d=>mkAA(b,d));
+      oppg.delopgaver.forEach(d=>mkLese(b,d));
       s.appendChild(k);
     });
   });
