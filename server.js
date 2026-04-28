@@ -260,15 +260,31 @@ KRAV TIL FORKLARINGEN:
 
 KRAV TIL OPPGAVENE:
 - Alle setninger handler om yrket "${yrke}" eller arbeidslivet
-- Stigende vanskelighetsgrad (a → e)
+- Stigende vanskelighetsgrad (a → e) innen hver oppgave
 - Yrkestitler med liten forbokstav
 - Alle fasit MÅ være korrekt norsk bokmål
-- ORDSTILLING-OPPGAVER (type "ordstilling"): Husk at norske setninger ofte har flere korrekte ordstillinger:
-  * Tidsadverbial kan stå først ELLER sist: «I dag jobber hun» og «Hun jobber i dag» er BEGGE riktige
-  * Stedsadverbial kan stå først ELLER sist: «På sykehuset jobber hun» og «Hun jobber på sykehuset»
-  * Ved inversjon (V2-regelen) bytter subjekt og verbal plass: «I dag jobber hun» (ikke «I dag hun jobber»)
-  * "fasit" = den mest naturlige setningen. "alt_fasit" = array med alle ANDRE gyldige ordstillinger
-  * Hvis setningen kun har ÉN korrekt ordstilling, sett "alt_fasit": []
+- Husk V2-regelen: norske setninger har ofte flere korrekte ordstillinger
+- Bruk "alt_fasit": [...] for alternative korrekte svar der relevant
+
+DE 6 OPPGAVETYPENE (bruk NØYAKTIG disse typene):
+
+1. "fyll_inn" — Fyll inn tomrom: Setning med ___ der ett ord/form mangler. Eleven skriver riktig form.
+   Perfekt for: verbbøyning, substantivbøyning, preposisjoner, artikler.
+
+2. "marker_ord" — Marker ordene: En kort tekst (2-3 setninger) der eleven må identifisere spesifikke ord.
+   "tekst" = hele teksten. "maalord" = array med ordene som skal markeres. "instruksjon_type" = hva som skal finnes (f.eks. "verb i presens", "substantiv i bestemt form", "adjektiv").
+
+3. "dra_ord" — Dra ordene: Setning med tomrom der ord skal dras inn på riktig plass. Ordene gis i tilfeldig rekkefølge.
+   "tekst" = setning med {1}, {2}, {3} som plassholdere. "ord" = array med ordene som skal plasseres (i riktig rekkefølge). Perfekt for preposisjoner og artikler.
+
+4. "sortering" — Sett i rekkefølge: Ord skal settes i riktig rekkefølge for å danne en setning.
+   "tekst" = ordene separert med " / ". "fasit" = korrekt setning. "alt_fasit" = alternative korrekte rekkefølger.
+
+5. "kategorisering" — Sorter i grupper: Ord skal sorteres i 2-3 kategorier.
+   "kategorier" = array med kategorinavn. "elementer" = array med { "ord": "...", "kategori": "riktig kategori" }. Perfekt for kjønn, bøyingsmønster, ordklasser.
+
+6. "flervalg" — Multiple choice: Spørsmål med 3 alternativer, kun 1 riktig.
+   "tekst" = spørsmål/setning. "alternativer" = ["a","b","c"]. "fasit" = riktig alternativ.
 
 Svar KUN med gyldig JSON:
 
@@ -276,11 +292,78 @@ Svar KUN med gyldig JSON:
   "tema": "Kort tema-navn",
   "forklaring": "Pedagogisk forklaring tilpasset ${niva}.",
   "oppgaver": [
-    { "nummer": 1, "type": "fyll_inn", "tittel": "Fyll inn riktig form", "instruksjon": "...", "delopgaver": [ { "bokstav": "a", "tekst": "Setning med (infinitiv).", "fasit": "korrekt form" }, ...5 stk ] },
-    { "nummer": 2, "type": "multiple_choice", "tittel": "Velg riktig", "instruksjon": "...", "delopgaver": [ { "bokstav": "a", "tekst": "...", "alternativer": ["a","b","c"], "fasit": "riktig" }, ...5 stk ] },
-    { "nummer": 3, "type": "ordstilling", "tittel": "Sett ordene i rekkefølge", "instruksjon": "...", "delopgaver": [ { "bokstav": "a", "tekst": "ord1 / ord2 / ord3", "fasit": "Hovedsvar.", "alt_fasit": ["Alternativt riktig svar hvis tidsadverbial/stedsadverbial kan flyttes"] }, ...5 stk ] },
-    { "nummer": 4, "type": "matching", "tittel": "Koble sammen", "instruksjon": "...", "delopgaver": [ { "bokstav": "a", "tekst": "kolonne A", "match": "kolonne B" }, ...5 stk ] },
-    { "nummer": 5, "type": "korriger", "tittel": "Korriger feilen", "instruksjon": "...", "delopgaver": [ { "bokstav": "a", "tekst": "Setning med feil.", "fasit": "Riktig setning.", "alt_fasit": ["Alternativ riktig versjon hvis relevant"] }, ...5 stk ] }
+    {
+      "nummer": 1, "type": "fyll_inn",
+      "tittel": "Fyll inn riktig form",
+      "instruksjon": "Skriv riktig form av ordet i parentes.",
+      "delopgaver": [
+        { "bokstav": "a", "tekst": "Setning med (infinitiv) som skal bøyes.", "fasit": "korrekt form" },
+        { "bokstav": "b", "tekst": "...", "fasit": "..." },
+        { "bokstav": "c", "tekst": "...", "fasit": "..." },
+        { "bokstav": "d", "tekst": "...", "fasit": "..." },
+        { "bokstav": "e", "tekst": "...", "fasit": "..." }
+      ]
+    },
+    {
+      "nummer": 2, "type": "marker_ord",
+      "tittel": "Finn ordene",
+      "instruksjon": "Klikk på alle [ordtype] i teksten.",
+      "delopgaver": [
+        { "bokstav": "a", "tekst": "En kort tekst med 2-3 setninger om yrket.", "maalord": ["ord1", "ord2", "ord3"], "instruksjon_type": "verb i presens" }
+      ]
+    },
+    {
+      "nummer": 3, "type": "dra_ord",
+      "tittel": "Dra ordene på plass",
+      "instruksjon": "Dra ordene inn på riktig plass i setningen.",
+      "delopgaver": [
+        { "bokstav": "a", "tekst": "Hun {1} på sykehuset {2} mandag.", "ord": ["jobber", "hver"], "fasit": ["jobber", "hver"] },
+        { "bokstav": "b", "tekst": "...", "ord": ["...", "..."], "fasit": ["...", "..."] },
+        { "bokstav": "c", "tekst": "...", "ord": ["...", "..."], "fasit": ["...", "..."] },
+        { "bokstav": "d", "tekst": "...", "ord": ["...", "..."], "fasit": ["...", "..."] },
+        { "bokstav": "e", "tekst": "...", "ord": ["...", "..."], "fasit": ["...", "..."] }
+      ]
+    },
+    {
+      "nummer": 4, "type": "sortering",
+      "tittel": "Sett ordene i riktig rekkefølge",
+      "instruksjon": "Lag en korrekt setning av ordene.",
+      "delopgaver": [
+        { "bokstav": "a", "tekst": "jobber / hun / om morgenen", "fasit": "Hun jobber om morgenen.", "alt_fasit": ["Om morgenen jobber hun."] },
+        { "bokstav": "b", "tekst": "...", "fasit": "...", "alt_fasit": [] },
+        { "bokstav": "c", "tekst": "...", "fasit": "...", "alt_fasit": [] },
+        { "bokstav": "d", "tekst": "...", "fasit": "...", "alt_fasit": [] },
+        { "bokstav": "e", "tekst": "...", "fasit": "...", "alt_fasit": [] }
+      ]
+    },
+    {
+      "nummer": 5, "type": "kategorisering",
+      "tittel": "Sorter ordene",
+      "instruksjon": "Dra hvert ord til riktig kategori.",
+      "kategorier": ["Kategori 1", "Kategori 2", "Kategori 3"],
+      "elementer": [
+        { "ord": "ord1", "kategori": "Kategori 1" },
+        { "ord": "ord2", "kategori": "Kategori 2" },
+        { "ord": "ord3", "kategori": "Kategori 3" },
+        { "ord": "ord4", "kategori": "Kategori 1" },
+        { "ord": "ord5", "kategori": "Kategori 2" },
+        { "ord": "ord6", "kategori": "Kategori 3" },
+        { "ord": "ord7", "kategori": "Kategori 1" },
+        { "ord": "ord8", "kategori": "Kategori 2" }
+      ]
+    },
+    {
+      "nummer": 6, "type": "flervalg",
+      "tittel": "Velg riktig alternativ",
+      "instruksjon": "Velg det riktige svaret.",
+      "delopgaver": [
+        { "bokstav": "a", "tekst": "Spørsmål eller setning med ___.", "alternativer": ["alt1", "alt2", "alt3"], "fasit": "riktig" },
+        { "bokstav": "b", "tekst": "...", "alternativer": ["...", "...", "..."], "fasit": "..." },
+        { "bokstav": "c", "tekst": "...", "alternativer": ["...", "...", "..."], "fasit": "..." },
+        { "bokstav": "d", "tekst": "...", "alternativer": ["...", "...", "..."], "fasit": "..." },
+        { "bokstav": "e", "tekst": "...", "alternativer": ["...", "...", "..."], "fasit": "..." }
+      ]
+    }
   ]
 }`;
 }
@@ -1032,6 +1115,83 @@ function mkLese(pa,d){
   else mkAA(pa,d);
 }
 
+// ── Marker ordene ───────────────────────────────────────────────────────────
+function mkMarkOrd(pa,oppg){
+  const d=oppg.delopgaver[0];if(!d)return;
+  mx+=d.maalord.length;
+  const wrap=document.createElement('div');wrap.className='d';
+  const itype=d.instruksjon_type||'riktige ord';
+  wrap.innerHTML='<div class="dl"><span class="dn">\\ud83d\\udd0d</span><span class="dt">Klikk p\\u00e5 alle <strong>'+e(itype)+'</strong> i teksten nedenfor:</span></div><div class="marker-tekst" style="line-height:2.2;margin:.8rem 0"></div><div class="br"><button class="bs">Sjekk svar</button></div><div class="fb"></div><div class="fx"></div>';
+  const mt=wrap.querySelector('.marker-tekst');
+  const ord=d.tekst.split(/\\s+/);
+  const maal=d.maalord.map(m=>n(m));
+  let valgte=new Set();
+  ord.forEach((o,i)=>{const sp=document.createElement('span');sp.textContent=o+' ';sp.style.cssText='cursor:pointer;padding:.2rem .4rem;border-radius:4px;border:2px solid transparent;transition:all .15s;display:inline-block;margin:.1rem';sp.onclick=()=>{if(sp.dataset.locked)return;if(sp.classList.contains('valgt')){sp.classList.remove('valgt');sp.style.borderColor='transparent';sp.style.background='transparent';valgte.delete(i);}else{sp.classList.add('valgt');sp.style.borderColor='var(--primary)';sp.style.background='#e6f4f6';valgte.add(i);}};mt.appendChild(sp);});
+  const fb=wrap.querySelector('.fb');const fx=wrap.querySelector('.fx');
+  wrap.querySelector('.bs').onclick=()=>{let riktige=0,feilMarkert=0;
+    mt.querySelectorAll('span').forEach((sp,i)=>{sp.dataset.locked='1';const rent=n(ord[i].replace(/[.,!?;:]/g,''));const erMaal=maal.includes(rent);const erValgt=valgte.has(i);
+      if(erMaal&&erValgt){sp.style.background='#d4edda';sp.style.borderColor='var(--green)';riktige++;}
+      else if(erMaal&&!erValgt){sp.style.background='#fff3cd';sp.style.borderColor='var(--accent)';}
+      else if(!erMaal&&erValgt){sp.style.background='#f8d7da';sp.style.borderColor='var(--red)';feilMarkert++;}
+    });
+    const pst=Math.round(riktige/maal.length*100);
+    if(pst>=80){fb.className='fb o v';fb.textContent='\\u2713 '+riktige+'/'+maal.length+' riktige!';}
+    else{fb.className='fb e v';fb.textContent=riktige+'/'+maal.length+' riktige, '+feilMarkert+' feil markert.';}
+    fx.innerHTML='<strong>Fasit:</strong> '+d.maalord.map(m=>'<span style="color:var(--green);font-weight:700">'+e(m)+'</span>').join(', ');fx.classList.add('v');
+    for(let i=0;i<maal.length;i++)gP(wrap,riktige>0?1:0);
+  };pa.appendChild(wrap);
+}
+
+// ── Dra ordene ──────────────────────────────────────────────────────────────
+function mkDraOrd(pa,oppg){
+  oppg.delopgaver.forEach(d=>{
+    mx++;const div=document.createElement('div');div.className='d';
+    const stokk=[...d.ord].sort(()=>Math.random()-.5);
+    // Bygg tekst med tomrom
+    let htmlTekst=e(d.tekst);for(let i=0;i<d.ord.length;i++){htmlTekst=htmlTekst.replace('{'+(i+1)+'}','<span class="dra-slot" data-idx="'+i+'" style="display:inline-block;min-width:80px;border-bottom:2px dashed var(--accent);padding:.2rem .4rem;margin:0 .2rem;text-align:center;min-height:1.5em;cursor:pointer;background:#fffbe6;border-radius:4px"></span>');}
+    div.innerHTML='<div class="dl"><span class="dn">'+d.bokstav+'</span><span class="dt">Dra ordene inn p\\u00e5 riktig plass:</span></div><div style="line-height:2;margin:.5rem 0;font-size:1.05rem">'+htmlTekst+'</div><div class="ob0" style="margin-top:.5rem"></div><div class="br"><button class="bs">Sjekk</button><button class="bf">Vis fasit</button></div><div class="fb"></div><div class="fx"><strong>Fasit:</strong> '+e(d.fasit.join(', '))+'</div>';
+    const bank=div.querySelector('.ob0');const fb=div.querySelector('.fb');
+    let aktivSlot=null;
+    // Klikk på slot for å velge den
+    div.querySelectorAll('.dra-slot').forEach(slot=>{slot.onclick=()=>{div.querySelectorAll('.dra-slot').forEach(s=>s.style.borderColor='var(--accent)');slot.style.borderColor='var(--primary)';aktivSlot=slot;if(slot.textContent){const o=slot.textContent;slot.textContent='';bank.querySelectorAll('.op').forEach(b=>{if(b.textContent===o)b.classList.remove('u');});}};});
+    stokk.forEach(o=>{const b=document.createElement('span');b.className='op';b.textContent=o;b.onclick=()=>{if(b.classList.contains('u'))return;if(!aktivSlot){const tom=div.querySelector('.dra-slot:empty');if(tom)aktivSlot=tom;else return;}aktivSlot.textContent=o;b.classList.add('u');aktivSlot.style.borderColor='var(--accent)';const neste=div.querySelector('.dra-slot:empty');aktivSlot=neste;if(neste)neste.style.borderColor='var(--primary)';};bank.appendChild(b);});
+    div.querySelector('.bs').onclick=()=>{const svar=[];div.querySelectorAll('.dra-slot').forEach(s=>svar.push(s.textContent));const riktig=svar.every((s,i)=>n(s)===n(d.fasit[i]));
+      if(riktig){fb.className='fb o v';fb.textContent='\\u2713 Riktig!';div.classList.add('ok');gP(div,1);}
+      else{fb.className='fb e v';fb.textContent='\\u2717 Ikke riktig. Pr\\u00f8v igjen.';div.querySelectorAll('.dra-slot').forEach((s,i)=>{s.style.background=n(s.textContent)===n(d.fasit[i])?'#d4edda':'#f8d7da';});}};
+    div.querySelector('.bf').onclick=()=>{div.querySelector('.fx').classList.add('v');div.classList.add('no');gP(div,0);};
+    pa.appendChild(div);
+  });
+}
+
+// ── Kategorisering ──────────────────────────────────────────────────────────
+function mkKat(pa,oppg){
+  const wrap=document.createElement('div');wrap.className='d';
+  const kat=oppg.kategorier||[];const elem=(oppg.elementer||[]).sort(()=>Math.random()-.5);
+  mx+=elem.length;
+  wrap.innerHTML='<div class="dl"><span class="dn">\\ud83d\\udcca</span><span class="dt">Dra hvert ord til riktig kategori:</span></div><div class="kat-bank" style="display:flex;flex-wrap:wrap;gap:.4rem;margin:.8rem 0"></div><div class="kat-grid" style="display:grid;grid-template-columns:repeat('+Math.min(kat.length,3)+',1fr);gap:.8rem;margin:.8rem 0"></div><div class="br"><button class="bs">Sjekk</button><button class="bf">Vis fasit</button></div><div class="fb"></div><div class="fx"></div>';
+  const bankEl=wrap.querySelector('.kat-bank');const gridEl=wrap.querySelector('.kat-grid');const fb=wrap.querySelector('.fb');const fx=wrap.querySelector('.fx');
+  let aktivOrd=null;
+  // Opprett kategori-kolonner
+  const kolonner={};
+  kat.forEach(k=>{const kol=document.createElement('div');kol.style.cssText='background:var(--white);border:2px solid var(--bgGray);border-radius:8px;padding:.6rem;min-height:100px';kol.innerHTML='<div style="font-weight:700;color:var(--primary);font-size:.85rem;margin-bottom:.5rem;text-align:center">'+e(k)+'</div><div class="kat-innhold" data-kat="'+e(k)+'" style="min-height:60px"></div>';
+    kol.querySelector('.kat-innhold').onclick=()=>{if(!aktivOrd)return;kol.querySelector('.kat-innhold').appendChild(aktivOrd);aktivOrd.classList.remove('valgt');aktivOrd=null;};
+    gridEl.appendChild(kol);kolonner[k]=kol.querySelector('.kat-innhold');});
+  // Opprett ord-brikker
+  elem.forEach(el=>{const b=document.createElement('span');b.className='op';b.textContent=el.ord;b.dataset.riktig=el.kategori;b.style.cursor='pointer';
+    b.onclick=()=>{if(b.classList.contains('u'))return;if(aktivOrd)aktivOrd.classList.remove('valgt');aktivOrd=b;b.classList.add('valgt');b.style.outline='2px solid var(--primary)';};
+    bankEl.appendChild(b);});
+  wrap.querySelector('.bs').onclick=()=>{let riktige=0;
+    Object.entries(kolonner).forEach(([katNavn,kol])=>{kol.querySelectorAll('.op').forEach(b=>{b.classList.add('u');
+      if(b.dataset.riktig===katNavn){b.style.background='#d4edda';b.style.borderColor='var(--green)';riktige++;gP(wrap,1);}
+      else{b.style.background='#f8d7da';b.style.borderColor='var(--red)';gP(wrap,0);}});});
+    // Sjekk ord som fortsatt er i banken
+    bankEl.querySelectorAll('.op:not(.u)').forEach(b=>{b.style.background='#fff3cd';gP(wrap,0);});
+    fb.className=(riktige===elem.length)?'fb o v':'fb e v';
+    fb.textContent=(riktige===elem.length)?'\\u2713 Alle riktig!':riktige+'/'+elem.length+' riktige.';};
+  wrap.querySelector('.bf').onclick=()=>{const fasitHtml=kat.map(k=>'<strong>'+e(k)+':</strong> '+elem.filter(el=>el.kategori===k).map(el=>e(el.ord)).join(', ')).join('<br>');fx.innerHTML=fasitHtml;fx.classList.add('v');};
+  pa.appendChild(wrap);
+}
+
 // \\u2550 BYGG SIDER \\u2550
 const tekster=D.seksjoner.filter(s=>s.type==='tekst');
 const leseO=D.seksjoner.filter(s=>s.type==='oppgave'&&s.oppgavetype==='leseforst\\u00e5else');
@@ -1067,13 +1227,16 @@ if(D.grammatikkData){const gd=D.grammatikkData;aS('s-g','\\ud83d\\udcd8','Gramma
   s.innerHTML='<h2 class="st"><span class="badge">\\ud83d\\udcd8</span> '+e(gd.tema)+'</h2>';
   s.insertAdjacentHTML('beforeend','<div class="gi"><h4>\\ud83d\\udcd8 Forklaring</h4><p>'+e(gd.forklaring)+'</p></div>');
   gd.oppgaver.forEach(oppg=>{
-    const ik={fyll_inn:'\\u270f\\ufe0f',multiple_choice:'\\u2611\\ufe0f',ordstilling:'\\ud83d\\udd00',matching:'\\ud83d\\udd17',korriger:'\\ud83d\\udd0d'}[oppg.type]||'\\ud83d\\udcdd';
+    const ik={fyll_inn:'\\u270f\\ufe0f',marker_ord:'\\ud83d\\udd0d',dra_ord:'\\u2b05\\ufe0f',sortering:'\\ud83d\\udd00',kategorisering:'\\ud83d\\udcca',flervalg:'\\u2611\\ufe0f'}[oppg.type]||'\\ud83d\\udcdd';
     const k=document.createElement('div');k.className='ok0';
     k.innerHTML='<div class="oh g">'+ik+' G'+oppg.nummer+': '+e(oppg.tittel)+'</div><div class="ob"><div class="oi">'+e(oppg.instruksjon)+'</div></div>';
     const b=k.querySelector('.ob');
-    if(oppg.type==='multiple_choice')oppg.delopgaver.forEach(d=>mkMC(b,d));
-    else if(oppg.type==='ordstilling')oppg.delopgaver.forEach(d=>mkOS(b,d));
-    else if(oppg.type==='matching')mkMA(b,oppg);
+    if(oppg.type==='fyll_inn')oppg.delopgaver.forEach(d=>mkFI(b,d));
+    else if(oppg.type==='marker_ord')mkMarkOrd(b,oppg);
+    else if(oppg.type==='dra_ord')mkDraOrd(b,oppg);
+    else if(oppg.type==='sortering')oppg.delopgaver.forEach(d=>mkOS(b,d));
+    else if(oppg.type==='kategorisering')mkKat(b,oppg);
+    else if(oppg.type==='flervalg')oppg.delopgaver.forEach(d=>mkMC(b,d));
     else oppg.delopgaver.forEach(d=>mkFI(b,d));
     s.appendChild(k);
   });
