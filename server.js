@@ -938,7 +938,7 @@ h2.st .badge{background:var(--primary);color:var(--white);padding:.2rem .7rem;bo
 </head>
 <body>
 <div class="topbar">
-  <div class="topbar-tittel">\${escapeHtml(yrke.toUpperCase())}<span>Nivå \${escapeHtml(niva)}</span></div>
+  <div class="topbar-tittel">${escapeHtml(yrke.toUpperCase())}<span>Nivå ${escapeHtml(niva)}</span></div>
   <div class="score-boks">
     <div class="score-label"><span id="sT">0 / 0</span><br>poeng</div>
     <div class="score-ring"><svg width="44" height="44" viewBox="0 0 44 44"><circle class="bg" cx="22" cy="22" r="18"/><circle class="fg" id="sR" cx="22" cy="22" r="18" stroke-dasharray="113.1" stroke-dashoffset="113.1"/></svg><div class="score-tall" id="sP">0%</div></div>
@@ -949,7 +949,7 @@ h2.st .badge{background:var(--primary);color:var(--white);padding:.2rem .7rem;bo
   <div class="innhold" id="inn"></div>
 </div>
 <script>
-const D=\${JSON.stringify(klientData)};
+const D=${JSON.stringify(klientData)};
 let p=0,mx=0;
 function uS(){const pst=mx===0?0:Math.round(p/mx*100);document.getElementById('sT').textContent=p+' / '+mx;document.getElementById('sP').textContent=pst+'%';const r=document.getElementById('sR');r.style.strokeDashoffset=113.1-(113.1*pst/100);document.querySelectorAll('[data-s]').forEach(b=>{const s=document.getElementById(b.dataset.s);if(!s)return;const t=s.querySelectorAll('.d').length,d=s.querySelectorAll('.d[data-d="1"]').length;const mm=b.querySelector('.mm'),md=b.querySelector('.md');if(t>0&&d===t){if(mm)mm.style.display='none';if(md)md.style.display='inline';}else if(t>0){if(mm){mm.style.display='inline';mm.textContent=d+'/'+t;}if(md)md.style.display='none';}});}
 function gP(el,v){if(el.dataset.d==='1')return;el.dataset.d='1';p+=v;uS();}
