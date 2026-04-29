@@ -2,7 +2,7 @@
 
 **Molde voksenopplæringssenter – MBO**
 
-Genererer skreddersydde Word-arbeidshefte og PowerPoint-presentasjoner for yrkesrettet norskopplæring (CEFR A1–B2). 
+Genererer skreddersydde Word-arbeidshefte, interaktivt program og PowerPoint-presentasjoner for yrkesrettet norskopplæring (CEFR A1–B2). 
 
 ---
 
