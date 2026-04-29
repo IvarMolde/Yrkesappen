@@ -223,37 +223,146 @@ async function buildDocx(data, hjelpesprak, plassering, grammatikkData) {
   return Packer.toBuffer(doc);
 }
 
-async function buildPptx(data, yrke, niva) {
+async function buildPptx(data, yrke, niva, hjelpesprak) {
   const { hms = [], egenskaper = [], arbeidsoppgaver = [], utdanning = [] } = data.pptx || {};
+  const ordliste = Array.isArray(data.ordliste) ? data.ordliste.slice(0, 10) : [];
+  const showHelp = hjelpesprak && hjelpesprak !== 'ingen';
   const pres = new pptxgen();
   pres.layout = 'LAYOUT_16x9';
   pres.title = `${yrke} – Norsknivå ${niva}`;
   pres.author = 'Molde voksenopplæringssenter';
+  pres.subject = 'Yrkesrettet norskopplaring';
 
-  const s1 = pres.addSlide();
-  s1.background = { color: C.primary };
-  s1.addText(yrke.toUpperCase(), { x: 0.5, y: 1.3, w: 9, h: 1.5, fontSize: 44, bold: true, color: C.white, fontFace: 'Calibri', align: 'center', valign: 'middle' });
-  s1.addText(`Norsknivå ${niva}`, { x: 0.5, y: 2.85, w: 9, h: 0.5, fontSize: 20, color: C.accent, fontFace: 'Calibri', align: 'center', valign: 'middle' });
+  function addHeader(slide, title, subtitle, colorBand) {
+    slide.addShape(pres.shapes.RECTANGLE, { x: 0, y: 0, w: 10, h: 0.18, fill: { color: colorBand }, line: { color: colorBand } });
+    slide.addText(title, { x: 0.35, y: 0.22, w: 9.2, h: 0.55, fontSize: 24, bold: true, color: C.primary, fontFace: 'Calibri' });
+    if (subtitle) {
+      slide.addText(subtitle, { x: 0.35, y: 0.78, w: 9.2, h: 0.28, fontSize: 12, color: C.textMid, fontFace: 'Calibri', italic: true });
+    }
+    slide.addShape(pres.shapes.LINE, { x: 0.35, y: 1.05, w: 9.2, h: 0, line: { color: C.secondary, width: 1.5 } });
+  }
 
-  const s2 = pres.addSlide();
-  s2.background = { color: C.bgLight };
-  s2.addText('Hva er dette yrket?', { x: 0.3, y: 0.2, w: 9, h: 0.6, fontSize: 24, bold: true, color: C.primary, fontFace: 'Calibri' });
-  s2.addText(arbeidsoppgaver.map((t) => ({ text: t, options: { bullet: true, breakLine: true } })), { x: 0.4, y: 1.1, w: 8.5, h: 3.5, fontSize: 15, color: C.textDark, fontFace: 'Calibri' });
+  function renderBullets(slide, items, x, y, w, h, fs = 16) {
+    const safeItems = items.length ? items : ['Ingen punkter tilgjengelig i dette utkastet.'];
+    slide.addText(
+      safeItems.map((t, i) => ({
+        text: t,
+        options: { bullet: true, breakLine: i < safeItems.length - 1, paraSpaceAfter: 8, color: C.textDark, fontFace: 'Calibri', fontSize: fs },
+      })),
+      { x, y, w, h, valign: 'top', margin: 4, fit: 'shrink' }
+    );
+  }
 
-  const s3 = pres.addSlide();
-  s3.background = { color: C.bgLight };
-  s3.addText('HMS', { x: 0.3, y: 0.2, w: 9, h: 0.6, fontSize: 24, bold: true, color: C.primary, fontFace: 'Calibri' });
-  s3.addText(hms.map((t) => ({ text: t, options: { bullet: true, breakLine: true } })), { x: 0.4, y: 1.1, w: 8.5, h: 3.5, fontSize: 15, color: C.textDark, fontFace: 'Calibri' });
+  // Slide 1: Tittel + læringsmål
+  {
+    const s = pres.addSlide();
+    s.background = { color: C.primary };
+    s.addShape(pres.shapes.RECTANGLE, { x: 0.5, y: 0.8, w: 9, h: 3.4, fill: { color: 'FFFFFF', transparency: 88 }, line: { color: C.white, width: 1 } });
+    s.addText(yrke.toUpperCase(), { x: 0.7, y: 1.1, w: 8.6, h: 1.0, fontSize: 42, bold: true, color: C.white, fontFace: 'Calibri', align: 'center' });
+    s.addText(`Norsknivå ${niva}`, { x: 0.7, y: 2.1, w: 8.6, h: 0.5, fontSize: 19, color: C.accent, fontFace: 'Calibri', align: 'center', bold: true });
+    s.addText('Læringsmål: Forstå sentrale begreper, arbeidsoppgaver og trygg praksis.', {
+      x: 0.8, y: 2.8, w: 8.4, h: 0.7, fontSize: 14, color: C.bgGray, fontFace: 'Calibri', align: 'center', fit: 'shrink',
+    });
+    s.addText('Molde voksenopplæringssenter', { x: 0.7, y: 4.8, w: 8.6, h: 0.35, fontSize: 12, color: C.bgGray, fontFace: 'Calibri', align: 'center' });
+  }
 
-  const s4 = pres.addSlide();
-  s4.background = { color: C.bgLight };
-  s4.addText('Personlige egenskaper', { x: 0.3, y: 0.2, w: 9, h: 0.6, fontSize: 24, bold: true, color: C.primary, fontFace: 'Calibri' });
-  s4.addText(egenskaper.map((t) => ({ text: t, options: { bullet: true, breakLine: true } })), { x: 0.4, y: 1.1, w: 8.5, h: 3.5, fontSize: 15, color: C.textDark, fontFace: 'Calibri' });
+  // Slide 2: Arbeidsoppgaver med forklaringsboks
+  {
+    const s = pres.addSlide();
+    s.background = { color: C.bgLight };
+    addHeader(s, 'Hva gjør en ' + yrke + '?', 'Kjerneoppgaver i yrket', C.accent);
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 0.35, y: 1.25, w: 6.1, h: 3.95, fill: { color: C.white }, line: { color: 'DDE2E6', width: 1 } });
+    renderBullets(s, arbeidsoppgaver.slice(0, 6), 0.5, 1.45, 5.8, 3.55, 15);
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 6.65, y: 1.25, w: 2.95, h: 3.95, fill: { color: 'E6F4F6' }, line: { color: 'C7E7EB', width: 1 } });
+    s.addText('Begrep forklart', { x: 6.85, y: 1.5, w: 2.55, h: 0.35, fontSize: 13, bold: true, color: C.primary, fontFace: 'Calibri' });
+    s.addText('Arbeidsoppgaver er konkrete ting du gjør i løpet av arbeidsdagen.', {
+      x: 6.85, y: 1.9, w: 2.55, h: 1.4, fontSize: 12, color: C.textDark, fontFace: 'Calibri', valign: 'top', fit: 'shrink',
+    });
+    s.addText('Sporsmal til klassen:\nHvilke av oppgavene virker mest viktige?', {
+      x: 6.85, y: 3.5, w: 2.55, h: 1.2, fontSize: 11, color: C.textMid, fontFace: 'Calibri', fit: 'shrink',
+    });
+  }
 
-  const s5 = pres.addSlide();
-  s5.background = { color: C.bgLight };
-  s5.addText('Utdanning og karriere', { x: 0.3, y: 0.2, w: 9, h: 0.6, fontSize: 24, bold: true, color: C.primary, fontFace: 'Calibri' });
-  s5.addText(utdanning.map((t) => ({ text: t, options: { bullet: true, breakLine: true } })), { x: 0.4, y: 1.1, w: 8.5, h: 3.5, fontSize: 15, color: C.textDark, fontFace: 'Calibri' });
+  // Slide 3: 10 viktige ord med forklaring og ev. hjelpespråk
+  {
+    const s = pres.addSlide();
+    s.background = { color: C.white };
+    addHeader(
+      s,
+      '10 viktige ord i yrket',
+      showHelp ? `Norsk forklaring + ${hjelpesprak}` : `Norsk forklaring pa nivå ${niva}`,
+      C.secondary
+    );
+    const leftW = showHelp ? 2.2 : 2.8;
+    const midW = showHelp ? 4.4 : 6.4;
+    const rightW = showHelp ? 2.6 : 0;
+    s.addShape(pres.shapes.RECTANGLE, { x: 0.35, y: 1.2, w: leftW, h: 0.35, fill: { color: C.primary }, line: { color: C.primary } });
+    s.addText('Norsk ord', { x: 0.45, y: 1.24, w: leftW - 0.2, h: 0.25, fontSize: 11, bold: true, color: C.white, fontFace: 'Calibri' });
+    s.addShape(pres.shapes.RECTANGLE, { x: 0.35 + leftW, y: 1.2, w: midW, h: 0.35, fill: { color: C.secondary }, line: { color: C.secondary } });
+    s.addText('Forklaring (norsk)', { x: 0.45 + leftW, y: 1.24, w: midW - 0.2, h: 0.25, fontSize: 11, bold: true, color: C.white, fontFace: 'Calibri' });
+    if (showHelp) {
+      s.addShape(pres.shapes.RECTANGLE, { x: 0.35 + leftW + midW, y: 1.2, w: rightW, h: 0.35, fill: { color: C.accent }, line: { color: C.accent } });
+      s.addText(String(hjelpesprak), { x: 0.45 + leftW + midW, y: 1.24, w: rightW - 0.2, h: 0.25, fontSize: 11, bold: true, color: C.textDark, fontFace: 'Calibri' });
+    }
+    for (let i = 0; i < 10; i += 1) {
+      const row = ordliste[i] || { norsk: '-', forklaring: '-', oversettelse: '' };
+      const y = 1.58 + i * 0.36;
+      const fill = i % 2 === 0 ? 'F8FAFC' : 'EEF2F6';
+      s.addShape(pres.shapes.RECTANGLE, { x: 0.35, y, w: leftW + midW + rightW, h: 0.34, fill: { color: fill }, line: { color: 'E3E8EE', width: 0.5 } });
+      s.addText(String(row.norsk || '-'), { x: 0.45, y: y + 0.03, w: leftW - 0.2, h: 0.25, fontSize: 11, bold: true, color: C.primary, fontFace: 'Calibri', fit: 'shrink' });
+      s.addText(String(row.forklaring || '-'), { x: 0.45 + leftW, y: y + 0.03, w: midW - 0.2, h: 0.25, fontSize: 10, color: C.textDark, fontFace: 'Calibri', fit: 'shrink' });
+      if (showHelp) {
+        s.addText(String(row.oversettelse || '-'), { x: 0.45 + leftW + midW, y: y + 0.03, w: rightW - 0.2, h: 0.25, fontSize: 10, color: C.textMid, fontFace: 'Calibri', italic: true, fit: 'shrink' });
+      }
+    }
+  }
+
+  // Slide 4: HMS - hvorfor viktig
+  {
+    const s = pres.addSlide();
+    s.background = { color: C.bgLight };
+    addHeader(s, 'HMS i praksis', 'Trygghet for deg, kollegaer og brukere', C.primary);
+    s.addShape(pres.shapes.RECTANGLE, { x: 0.35, y: 1.2, w: 5.9, h: 4.0, fill: { color: C.white }, line: { color: 'DDE2E6', width: 1 } });
+    renderBullets(s, hms.slice(0, 6), 0.5, 1.45, 5.6, 3.6, 14);
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 6.45, y: 1.2, w: 3.15, h: 4.0, fill: { color: C.primary }, line: { color: C.primary } });
+    s.addText('Hvorfor HMS?', { x: 6.65, y: 1.45, w: 2.75, h: 0.35, fontSize: 14, bold: true, color: C.white, fontFace: 'Calibri' });
+    s.addText('• Færre skader\n• Bedre trivsel\n• Bedre kvalitet i arbeidet\n• Tryggere kommunikasjon', {
+      x: 6.65, y: 1.9, w: 2.75, h: 2.2, fontSize: 12, color: C.bgGray, fontFace: 'Calibri', fit: 'shrink',
+    });
+    s.addText('Diskusjon:\nHvilke HMS-punkt er viktigst i dette yrket?', { x: 6.65, y: 4.25, w: 2.75, h: 0.8, fontSize: 11, color: C.accent, fontFace: 'Calibri', fit: 'shrink' });
+  }
+
+  // Slide 5: Egenskaper
+  {
+    const s = pres.addSlide();
+    s.background = { color: C.white };
+    addHeader(s, 'Personlige egenskaper', 'Hva kjennetegner en god fagperson?', C.accent);
+    const cards = egenskaper.slice(0, 6);
+    for (let i = 0; i < cards.length; i += 1) {
+      const col = i % 3;
+      const row = Math.floor(i / 3);
+      const x = 0.45 + col * 3.15;
+      const y = 1.35 + row * 1.85;
+      s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w: 2.85, h: 1.55, fill: { color: row % 2 === 0 ? 'E8F4F6' : 'F6F9FB' }, line: { color: 'D7E3EA', width: 1 } });
+      s.addText(cards[i], { x: x + 0.16, y: y + 0.2, w: 2.5, h: 1.1, fontSize: 14, bold: true, color: C.textDark, fontFace: 'Calibri', fit: 'shrink', valign: 'mid' });
+    }
+    if (!cards.length) {
+      s.addText('Ingen egenskaper generert i dette utkastet.', { x: 0.5, y: 1.8, w: 9, h: 0.6, fontSize: 14, color: C.textMid, fontFace: 'Calibri' });
+    }
+  }
+
+  // Slide 6: Utdanning + neste steg
+  {
+    const s = pres.addSlide();
+    s.background = { color: C.bgLight };
+    addHeader(s, 'Utdanning og neste steg', 'Veier inn i yrket', C.secondary);
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 0.4, y: 1.3, w: 9.2, h: 2.7, fill: { color: C.white }, line: { color: 'DDE2E6', width: 1 } });
+    renderBullets(s, utdanning.slice(0, 5), 0.6, 1.55, 8.8, 2.2, 14);
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 0.4, y: 4.2, w: 9.2, h: 0.9, fill: { color: C.primary }, line: { color: C.primary } });
+    s.addText('Neste aktivitet: Les tekstene i arbeidsheftet og gjennomfør oppgavene i valgt format.', {
+      x: 0.65, y: 4.42, w: 8.7, h: 0.45, fontSize: 13, color: C.white, fontFace: 'Calibri', fit: 'shrink',
+    });
+  }
 
   const tmpPath = path.join(os.tmpdir(), `pptx-${Date.now()}.pptx`);
   try {
