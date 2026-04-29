@@ -195,14 +195,25 @@ async function buildDocx(data, hjelpesprak, plassering, grammatikkData) {
   ] : [];
 
   const grammatikkBlock = [];
-  if (grammatikkData && grammatikkData.oppgaver) {
+  function cleanPedagogicText(text) {
+    return String(text || '')
+      .replace(/\*\*/g, '')
+      .replace(/^[-*]\s+/gm, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
+  if (grammatikkData && Array.isArray(grammatikkData.oppgaver) && grammatikkData.oppgaver.length) {
     grammatikkBlock.push(...sectionHeader(`Grammatikk: ${grammatikkData.tema}`));
     grammatikkBlock.push(
       new Paragraph({ spacing: { before: 0, after: 0 }, shading: { fill: C.primary, type: ShadingType.CLEAR }, children: [new TextRun({ text: '  📘 Grammatikkforklaring  ', bold: true, size: 24, color: C.white, font: 'Calibri' })] }),
-      new Paragraph({ spacing: { before: 0, after: 240 }, shading: { fill: 'E6F4F6', type: ShadingType.CLEAR }, border: { left: { style: BorderStyle.SINGLE, size: 12, color: C.secondary, space: 8 } }, children: [new TextRun({ text: grammatikkData.forklaring, size: 24, font: 'Calibri', color: C.textDark })] })
+      new Paragraph({
+        spacing: { before: 0, after: 120 },
+        shading: { fill: 'E6F4F6', type: ShadingType.CLEAR },
+        border: { left: { style: BorderStyle.SINGLE, size: 12, color: C.secondary, space: 8 } },
+        children: [new TextRun({ text: cleanPedagogicText(grammatikkData.forklaring), size: 24, font: 'Calibri', color: C.textDark })],
+      })
     );
 
-    // Pedagogisk hurtigskjema: gjør grammatikkdelen mer visuell og lettere å bruke i undervisning.
     grammatikkBlock.push(
       new Paragraph({
         spacing: { before: 40, after: 60 },
@@ -228,8 +239,40 @@ async function buildDocx(data, hjelpesprak, plassering, grammatikkData) {
           })),
         ],
       }),
-      new Paragraph({ spacing: { after: 180 }, children: [] })
+      new Paragraph({ spacing: { after: 120 }, children: [] }),
+      new Paragraph({
+        spacing: { before: 20, after: 80 },
+        children: [new TextRun({ text: 'Øvingsoppgaver', bold: true, size: 24, color: C.primary, font: 'Calibri' })],
+      })
     );
+
+    grammatikkData.oppgaver.forEach((oppg) => {
+      grammatikkBlock.push(
+        new Paragraph({
+          spacing: { before: 60, after: 30 },
+          shading: { fill: C.bgGray, type: ShadingType.CLEAR },
+          children: [new TextRun({ text: `Oppgave ${oppg.nummer}: ${cleanPedagogicText(oppg.tittel)}`, bold: true, size: 22, color: C.textDark, font: 'Calibri' })],
+        }),
+        new Paragraph({
+          spacing: { after: 40 },
+          children: [new TextRun({ text: cleanPedagogicText(oppg.instruksjon), italics: true, size: 21, color: C.textMid, font: 'Calibri' })],
+        })
+      );
+      const rows = (oppg.delopgaver || []).slice(0, 5).map((d, i) => {
+        const fill = i % 2 === 0 ? C.white : C.bgGray;
+        return new TableRow({
+          cantSplit: true,
+          children: [
+            new TableCell({ borders: noBorders, width: { size: 900, type: WidthType.DXA }, shading: { fill, type: ShadingType.CLEAR }, children: [new Paragraph({ children: [new TextRun({ text: `${d.bokstav})`, bold: true, size: 22, color: C.primary, font: 'Calibri' })] })] }),
+            new TableCell({ borders: noBorders, width: { size: 8100, type: WidthType.DXA }, shading: { fill, type: ShadingType.CLEAR }, children: [new Paragraph({ children: [new TextRun({ text: cleanPedagogicText(d.tekst), size: 22, font: 'Calibri', color: C.textDark })] }), svarLinje()] }),
+          ],
+        });
+      });
+      grammatikkBlock.push(
+        new Table({ width: { size: 9000, type: WidthType.DXA }, columnWidths: [900, 8100], rows }),
+        new Paragraph({ spacing: { after: 70 }, children: [] })
+      );
+    });
   }
 
   const doc = new Document({
