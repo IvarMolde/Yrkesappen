@@ -1,4 +1,5 @@
 'use strict';
+const { generateSchema } = require('../schemas/api');
 
 function rettForbokstav(tekst, y) {
   if (!tekst || !y) return tekst;
@@ -20,10 +21,13 @@ function registerGenerateRoute(app, deps) {
     buildPptx,
   } = deps;
 
-  app.post('/api/generer', async (req, res) => {
+  app.post('/api/generer', async (req, res, next) => {
     try {
-      const { yrke, niva, sprak, plassering, fokus, grammatikkFokus, passord } = req.body;
-      if (!yrke || !niva) return res.status(400).json({ feil: 'Yrke og nivå er påkrevd.' });
+      const parsed = generateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ feil: 'Ugyldig input. Sjekk yrke, nivå og valg.' });
+      }
+      const { yrke, niva, sprak, plassering, fokus, grammatikkFokus, passord } = parsed.data;
 
       const riktig = process.env.APP_PASSORD;
       if (riktig && passord !== riktig) return res.status(401).json({ feil: 'Ikke autorisert. Logg inn på nytt.' });
@@ -89,8 +93,7 @@ function registerGenerateRoute(app, deps) {
         yrkeKorrigert: yrkeKorrigert ? yrkeNormalisert : null,
       });
     } catch (err) {
-      console.error(err);
-      if (!res.headersSent) res.status(500).json({ feil: err.message });
+      return next(err);
     }
   });
 }
