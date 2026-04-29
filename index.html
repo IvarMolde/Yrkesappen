@@ -468,11 +468,14 @@
   <div class="card">
     <h3><span class="step">6</span> Generer dokumenter</h3>
     <label style="margin-bottom:.6rem;">Velg format(er)</label>
-    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:1rem;">
+    <div id="formatRow" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:1rem;">
       <label style="display:flex;align-items:center;gap:.45rem;font-weight:600;"><input id="fmtDocx" type="checkbox" checked /> Word (.docx)</label>
       <label style="display:flex;align-items:center;gap:.45rem;font-weight:600;"><input id="fmtPptx" type="checkbox" checked /> PowerPoint (.pptx)</label>
-      <label style="display:flex;align-items:center;gap:.45rem;font-weight:600;"><input id="fmtHtml" type="checkbox" /> HTML (interaktiv)</label>
+      <label id="fmtHtmlWrapper" style="display:flex;align-items:center;gap:.45rem;font-weight:600;"><input id="fmtHtml" type="checkbox" /> HTML (interaktiv)</label>
     </div>
+    <p id="b2HtmlInfo" style="display:none;font-size:.88rem;color:var(--textMid);margin-bottom:1rem;">
+      For nivå B2 er HTML-oppgaver deaktivert for å sikre stabil og rask generering.
+    </p>
     <p style="font-size:.9rem;color:var(--textMid);margin-bottom:1rem;">
       Du får valgte filer lastet ned direkte. HTML åpnes i nettleser og kan brukes på storskjerm.
       Genereringen tar ca. 20–40 sekunder.
@@ -517,8 +520,27 @@
       document.querySelectorAll('.niva-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       valgtNiva = btn.dataset.niva;
+      oppdaterFormatvalgForNiva();
     });
   });
+
+  function oppdaterFormatvalgForNiva() {
+    const htmlWrapper = document.getElementById('fmtHtmlWrapper');
+    const htmlCheckbox = document.getElementById('fmtHtml');
+    const b2Info = document.getElementById('b2HtmlInfo');
+    const erB2 = valgtNiva === 'B2';
+
+    if (erB2) {
+      htmlCheckbox.checked = false;
+      htmlCheckbox.disabled = true;
+      htmlWrapper.style.display = 'none';
+      b2Info.style.display = 'block';
+    } else {
+      htmlCheckbox.disabled = false;
+      htmlWrapper.style.display = 'flex';
+      b2Info.style.display = 'none';
+    }
+  }
 
   // Plassering synkronisert med språkfelt
   const sprakInput = document.getElementById('sprakInput');

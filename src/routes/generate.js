@@ -31,6 +31,12 @@ function registerGenerateRoute(app, deps) {
       }
       const { yrke, niva, sprak, plassering, fokus, grammatikkFokus, passord, authToken, formater } = parsed.data;
 
+      if (niva === 'B2' && formater.includes('html')) {
+        return res.status(400).json({
+          feil: 'HTML-format er ikke tilgjengelig for nivå B2. Velg Word og/eller PowerPoint.',
+        });
+      }
+
       const riktig = process.env.APP_PASSORD;
       const tokenValid = verifyAuthToken(authToken);
       if (riktig && !tokenValid && passord !== riktig) {
