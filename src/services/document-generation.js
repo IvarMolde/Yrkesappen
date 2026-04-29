@@ -391,14 +391,18 @@ function buildInteractiveHtml(data, yrke, niva, hjelpesprak) {
     return String(text || '')
       .split(/(?<=[.!?])\s+/)
       .map((s) => s.trim())
-      .filter((s) => s.length > 10);
+      .filter((s) => s.length > 12);
   }
 
   function words(text) {
     return String(text || '').match(/[A-Za-zÆØÅæøå]+/g) || [];
   }
 
-  function seededPick(arr, seed, count) {
+  function normalizeWord(word) {
+    return String(word || '').toLowerCase().replace(/[.,!?;:()"]/g, '').trim();
+  }
+
+  function seededShuffle(arr, seed) {
     const copy = [...arr];
     let x = seed % 2147483647;
     if (x <= 0) x += 2147483646;
@@ -410,120 +414,159 @@ function buildInteractiveHtml(data, yrke, niva, hjelpesprak) {
       const j = Math.floor(rnd() * (i + 1));
       [copy[i], copy[j]] = [copy[j], copy[i]];
     }
-    return copy.slice(0, count);
+    return copy;
+  }
+
+  function seededPick(arr, seed, count) {
+    return seededShuffle(arr, seed).slice(0, count);
   }
 
   const antonymPairs = [
     ['høy', 'lav'], ['stor', 'liten'], ['trygg', 'farlig'], ['tidlig', 'sent'], ['rask', 'langsom'],
     ['sterk', 'svak'], ['ren', 'skitten'], ['åpen', 'lukket'], ['viktig', 'uviktig'], ['rolig', 'stresset'],
+    ['glad', 'trist'], ['lett', 'vanskelig'], ['aktiv', 'passiv'],
   ];
 
-  const taskTypePool = ['fill_missing', 'true_false', 'synonym', 'antonym', 'choose_statement', 'click_word'];
-  if (niva !== 'A1') taskTypePool.push('sentence_order');
+  const synonymPairs = [
+    ['fin', 'pen'], ['stor', 'svær'], ['liten', 'små'], ['rask', 'hurtig'], ['jobb', 'arbeid'],
+    ['trygg', 'sikker'], ['rolig', 'stille'], ['viktig', 'sentral'], ['hjelpe', 'bistå'], ['starte', 'begynne'],
+  ];
+
+  const genericTaskPool = ['fill_missing', 'true_false', 'synonym_click', 'antonym_choice', 'choose_statement', 'click_word_meaning'];
+  const hasSentenceOrder = niva !== 'A1';
+
+  function mutateFalseStatement(sentence, idx) {
+    if (/\balltid\b/i.test(sentence)) return sentence.replace(/\balltid\b/i, 'av og til');
+    if (/\bofte\b/i.test(sentence)) return sentence.replace(/\bofte\b/i, 'sjelden');
+    if (/\bkan\b/i.test(sentence)) return sentence.replace(/\bkan\b/i, 'kan ikke');
+    if (/\bmå\b/i.test(sentence)) return sentence.replace(/\bmå\b/i, 'må ikke');
+    if (/\ber\b/i.test(sentence)) return sentence.replace(/\ber\b/i, 'er ikke');
+    const tokens = words(sentence);
+    if (tokens.length > 2) {
+      return sentence.replace(tokens[1], tokens[Math.min(tokens.length - 1, idx + 2)]);
+    }
+    return sentence + ' Dette stemmer ikke.';
+  }
+
+  function pickWordFromSentence(sentence, idx) {
+    const ws = words(sentence).filter((w) => w.length > 3);
+    return ws[(idx + ws.length) % ws.length] || ws[0] || 'ord';
+  }
 
   function buildTaskByType(type, textObj, textIdx) {
     const sentences = splitSentences(textObj.innhold);
+    const fallbackSentences = sentences.length ? sentences : [textObj.innhold || 'Tekst kommer snart.'];
     const vocabWords = ordliste.map((o) => o.norsk).filter(Boolean);
 
     if (type === 'fill_missing') {
-      const items = seededPick(sentences, textIdx + 11, 5).map((sentence, i) => {
-        const sentenceWords = words(sentence).filter((w) => w.length > 3);
-        const answer = sentenceWords[(i + sentenceWords.length) % sentenceWords.length] || 'ord';
-        const prompt = sentence.replace(new RegExp(`\\b${answer}\\b`), '_____');
+      const items = seededPick(fallbackSentences, textIdx + 11, 5).map((sentence, i) => {
+        const answer = pickWordFromSentence(sentence, i);
+        const prompt = sentence.replace(new RegExp(`\\b${answer}\\b`, 'i'), '_____');
         return { letter: 'abcde'[i], sentence: prompt, answer };
       });
-      return { type, title: 'Skriv inn ordet som mangler', instruction: 'Skriv ordet som mangler i hver setning.', items };
+      return { type, title: 'Skriv inn ordet som mangler', instruction: 'Skriv riktig ord i feltet og trykk "Sjekk".', items };
     }
 
-    if (type === 'sentence_order') {
-      const items = seededPick(sentences, textIdx + 21, 5).map((sentence, i) => {
-        const w = words(sentence).slice(0, 8);
-        const shuffled = seededPick(w, textIdx + 100 + i, w.length);
-        return { letter: 'abcde'[i], shuffled: shuffled.join(' / '), answer: sentence };
+    if (type === 'sentence_order_drag') {
+      const items = seededPick(fallbackSentences, textIdx + 21, 5).map((sentence, i) => {
+        const ordered = words(sentence).slice(0, 9);
+        const shuffled = seededShuffle(ordered, textIdx + 120 + i);
+        return { letter: 'abcde'[i], ordered, shuffled, answer: ordered.join(' ') };
       });
-      return { type, title: 'Sorter ordene til riktig setning', instruction: 'Skriv setningen i riktig rekkefølge. Husk inversjon når det trengs.', items };
+      return { type, title: 'Sorter ordene med dra og slipp', instruction: 'Dra ordene i riktig rekkefølge. Husk inversjon fra A2 og oppover.', items };
     }
 
     if (type === 'true_false') {
-      const picked = seededPick(sentences, textIdx + 31, 5);
+      const picked = seededPick(fallbackSentences, textIdx + 31, 5);
       const items = picked.map((sentence, i) => {
         const isTrue = i % 2 === 0;
-        const statement = isTrue ? sentence : `Ikke: ${sentence}`;
+        const statement = isTrue ? sentence : mutateFalseStatement(sentence, i);
         return { letter: 'abcde'[i], statement, answer: isTrue ? 'sant' : 'usant' };
       });
-      return { type, title: 'Sant eller usant', instruction: 'Velg om påstanden er sant eller usant.', items };
+      return { type, title: 'Sant eller usant', instruction: 'Velg om påstanden stemmer med leseteksten.', items };
     }
 
-    if (type === 'synonym') {
-      const candidates = ordliste.filter((o) => o.forklaring && o.norsk).slice(0, 8);
-      const items = seededPick(candidates, textIdx + 41, Math.min(5, candidates.length)).map((entry, i) => {
-        const options = seededPick(candidates.map((c) => c.norsk), textIdx + 200 + i, Math.min(4, candidates.length));
-        if (!options.includes(entry.norsk)) options[0] = entry.norsk;
-        return { letter: 'abcde'[i], clue: entry.forklaring, options, answer: entry.norsk };
+    if (type === 'synonym_click') {
+      const pairs = seededPick(synonymPairs, textIdx + 41, 5);
+      const items = pairs.map((pair, i) => {
+        const [base, synonym] = pair;
+        const distractors = seededPick(synonymPairs.map((p) => p[1]).filter((w) => w !== synonym), textIdx + 230 + i, 2);
+        const options = seededShuffle([synonym, ...distractors], textIdx + 330 + i);
+        return { letter: 'abcde'[i], base, options, answer: synonym };
       });
-      while (items.length < 5) {
-        items.push({ letter: 'abcde'[items.length], clue: 'Velg ordet som passer best.', options: vocabWords.slice(0, 4), answer: vocabWords[0] || 'ord' });
-      }
-      return { type, title: 'Finn synonym/ord med samme mening', instruction: 'Velg ordet som passer til forklaringen.', items };
+      return { type, title: 'Klikk på synonym', instruction: 'Klikk ordet som betyr omtrent det samme.', items };
     }
 
-    if (type === 'antonym') {
-      const usable = antonymPairs.filter(([a]) => vocabWords.some((w) => w.toLowerCase().includes(a)));
-      const base = usable.length > 0 ? usable : antonymPairs;
-      const items = seededPick(base, textIdx + 51, 5).map((pair, i) => {
+    if (type === 'antonym_choice') {
+      const textWords = seededPick(words(textObj.innhold).map((w) => normalizeWord(w)), textIdx + 51, 8);
+      const items = seededPick(antonymPairs, textIdx + 52, 5).map((pair, i) => {
         const [a, b] = pair;
-        const options = seededPick(antonymPairs.map((p) => p[1]), textIdx + 300 + i, 4);
-        if (!options.includes(b)) options[0] = b;
-        return { letter: 'abcde'[i], word: a, options, answer: b };
+        const source = textWords.find((tw) => tw === a) || a;
+        const distractors = seededPick(antonymPairs.map((p) => p[1]).filter((w) => w !== b), textIdx + 430 + i, 2);
+        const options = seededShuffle([b, ...distractors], textIdx + 530 + i);
+        return { letter: 'abcde'[i], word: source, options, answer: b };
       });
-      return { type, title: 'Finn antonym', instruction: 'Velg ordet som betyr det motsatte.', items };
+      return { type, title: 'Finn antonym', instruction: 'Velg ordet som betyr det motsatte av ordet fra teksten.', items };
     }
 
-    if (type === 'click_word') {
-      const items = seededPick(sentences, textIdx + 61, 5).map((sentence, i) => {
+    if (type === 'click_word_meaning') {
+      const items = seededPick(fallbackSentences, textIdx + 61, 5).map((sentence, i) => {
         const ws = words(sentence).filter((w) => w.length > 3);
         const answer = ws[(i + 1) % ws.length] || ws[0] || 'ord';
-        const clue = (ordliste.find((o) => o.norsk.toLowerCase().includes(answer.toLowerCase())) || {}).forklaring || `Klikk på ordet som betyr: ${answer}`;
+        const clueFromList = ordliste.find((o) => normalizeWord(o.norsk).includes(normalizeWord(answer)));
+        const clue = clueFromList ? clueFromList.forklaring : `Klikk ordet i setningen som betyr: ${answer}`;
         return { letter: 'abcde'[i], sentence, clue, answer };
       });
-      return { type, title: 'Klikk på riktig ord i teksten', instruction: 'Klikk ordet som passer til betydningen.', items };
+      return { type, title: 'Klikk ordet som passer betydningen', instruction: 'Hold over ord for markering, klikk deretter riktig ord.', items };
     }
 
-    const items = seededPick(sentences, textIdx + 71, 5).map((sentence, i) => {
-      const wrongA = `Påstand A: ${sentence}`;
-      const wrongB = `Påstand B: Teksten handler ikke om ${yrke}.`;
-      const correct = `Påstand C: ${sentence}`;
-      return { letter: 'abcde'[i], options: [wrongA, wrongB, correct], answer: correct };
+    const items = seededPick(fallbackSentences, textIdx + 71, 5).map((sentence, i) => {
+      const correct = sentence;
+      const optionB = mutateFalseStatement(sentence, i + 11);
+      const optionC = mutateFalseStatement(sentence, i + 19);
+      const options = seededShuffle([correct, optionB, optionC], textIdx + 700 + i);
+      return { letter: 'abcde'[i], options, answer: correct };
     });
-    return { type: 'choose_statement', title: 'Finn riktig påstand', instruction: 'Velg påstanden som stemmer med teksten.', items };
+    return { type: 'choose_statement', title: 'Finn riktig påstand', instruction: 'Velg hvilken påstand som stemmer med teksten.', items };
   }
 
   const textModels = tekster.map((t, i) => {
-    const chosenTypes = seededPick(taskTypePool, 700 + i * 17, Math.min(3, taskTypePool.length));
+    const pool = [...genericTaskPool];
+    if (hasSentenceOrder) {
+      pool.splice(1, 0, 'sentence_order_drag');
+    }
+    const chosenTypes = seededPick(pool, 800 + i * 29, 3);
     const tasks = chosenTypes.map((type) => buildTaskByType(type, t, i));
     return { title: t.tittel, content: t.innhold, tasks };
   });
 
   const wizardTabs = textModels.map((t, i) => `<button class="tab-btn${i === 0 ? ' active' : ''}" data-pane="pane-${i}">Tekst ${i + 1}</button>`).join('');
-  const glossary = ordliste.slice(0, 16).map((o) => `<tr><td>${escapeHtml(o.norsk)}</td><td>${escapeHtml(o.forklaring)}</td>${showHelp ? `<td>${escapeHtml(o.oversettelse || '')}</td>` : ''}</tr>`).join('');
+  const glossary = ordliste.slice(0, 12).map((o) => `<tr><td>${escapeHtml(o.norsk)}</td><td>${escapeHtml(o.forklaring)}</td>${showHelp ? `<td>${escapeHtml(o.oversettelse || '')}</td>` : ''}</tr>`).join('');
 
   function renderTask(task, textIdx, taskIdx) {
     const taskKey = `t${textIdx}-q${taskIdx}`;
     const rows = task.items.map((item, i) => {
       const id = `${taskKey}-${item.letter}`;
-      if (task.type === 'fill_missing' || task.type === 'sentence_order') {
-        return `<div class="item"><label><strong>${item.letter})</strong> ${escapeHtml(item.sentence || item.shuffled)}</label><div class="answer-row"><input id="${id}" type="text"><button onclick="checkText('${id}','${escapeHtml(item.answer.toLowerCase())}')">Sjekk</button><span id="${id}-fb" class="fb"></span></div></div>`;
+      if (task.type === 'fill_missing') {
+        return `<div class="item"><label><strong>${item.letter})</strong> ${escapeHtml(item.sentence)}</label><div class="answer-row"><input id="${id}" type="text"><button class="btn-primary" onclick="checkText('${id}','${escapeHtml(item.answer.toLowerCase())}')">Sjekk</button><span id="${id}-fb" class="fb"></span></div></div>`;
+      }
+      if (task.type === 'sentence_order_drag') {
+        const chips = item.shuffled.map((w, wi) => `<button class="word-chip" draggable="true" data-value="${escapeHtml(w)}" ondragstart="dragWord(event,'${id}')" id="${id}-chip-${wi}">${escapeHtml(w)}</button>`).join('');
+        return `<div class="item"><div><strong>${item.letter})</strong> Dra ordene i riktig rekkefølge.</div><div class="drag-wrap"><div class="word-bank" id="${id}-bank">${chips}</div><div class="drop-line" id="${id}-drop" ondragover="allowDrop(event)" ondrop="dropWord(event,'${id}')"></div></div><div class="answer-row"><button class="btn-primary" onclick="checkOrder('${id}','${escapeHtml(item.answer.toLowerCase())}')">Sjekk</button><button class="btn-muted" onclick="resetOrder('${id}')">Nullstill</button><span id="${id}-fb" class="fb"></span></div></div>`;
       }
       if (task.type === 'true_false') {
-        return `<div class="item"><div><strong>${item.letter})</strong> ${escapeHtml(item.statement)}</div><div class="answer-row"><button onclick="checkChoice('${id}','sant','${item.answer}')">Sant</button><button onclick="checkChoice('${id}','usant','${item.answer}')">Usant</button><span id="${id}-fb" class="fb"></span></div></div>`;
+        return `<div class="item"><div><strong>${item.letter})</strong> ${escapeHtml(item.statement)}</div><div class="answer-row"><button class="btn-primary" onclick="checkChoice('${id}','sant','${item.answer}')">Sant</button><button class="btn-muted" onclick="checkChoice('${id}','usant','${item.answer}')">Usant</button><span id="${id}-fb" class="fb"></span></div></div>`;
       }
-      if (task.type === 'click_word') {
-        const buttons = words(item.sentence).slice(0, 10).map((w) => `<button onclick="checkChoice('${id}','${escapeHtml(w.toLowerCase())}','${escapeHtml(item.answer.toLowerCase())}')">${escapeHtml(w)}</button>`).join('');
-        return `<div class="item"><div><strong>${item.letter})</strong> ${escapeHtml(item.clue)}</div><p class="mini">${escapeHtml(item.sentence)}</p><div class="answer-row">${buttons}<span id="${id}-fb" class="fb"></span></div></div>`;
+      if (task.type === 'click_word_meaning') {
+        const wordButtons = words(item.sentence).slice(0, 12).map((w) => `<button class="click-word" onclick="checkWordClick('${id}','${escapeHtml(normalizeWord(w))}','${escapeHtml(normalizeWord(item.answer))}', this)">${escapeHtml(w)}</button>`).join('');
+        return `<div class="item"><div><strong>${item.letter})</strong> ${escapeHtml(item.clue)}</div><p class="mini">${escapeHtml(item.sentence)}</p><div class="answer-row">${wordButtons}<span id="${id}-fb" class="fb"></span></div></div>`;
       }
-      const opts = (item.options || []).map((op) => `<button onclick="checkChoice('${id}','${escapeHtml(op)}','${escapeHtml(item.answer)}')">${escapeHtml(op)}</button>`).join('');
-      const prompt = item.clue || `Finn antonym til ordet: ${item.word || ''}`;
-      return `<div class="item"><div><strong>${item.letter})</strong> ${escapeHtml(prompt)}</div><div class="answer-row">${opts}<span id="${id}-fb" class="fb"></span></div></div>`;
+
+      const prompt = task.type === 'antonym_choice'
+        ? `Velg antonym til ordet: ${escapeHtml(item.word)}`
+        : (task.type === 'synonym_click' ? `Klikk synonym til ordet: ${escapeHtml(item.base)}` : 'Velg riktig alternativ:');
+      const opts = (item.options || []).map((op) => `<button class="btn-option" onclick="checkChoice('${id}','${escapeHtml(op)}','${escapeHtml(item.answer)}', this)">${escapeHtml(op)}</button>`).join('');
+      return `<div class="item"><div><strong>${item.letter})</strong> ${prompt}</div><div class="answer-row">${opts}<span id="${id}-fb" class="fb"></span></div></div>`;
     }).join('');
     return `<section class="task"><h4>${escapeHtml(task.title)}</h4><p class="instr">${escapeHtml(task.instruction)}</p>${rows}</section>`;
   }
@@ -545,31 +588,54 @@ function buildInteractiveHtml(data, yrke, niva, hjelpesprak) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(yrke)} - interaktive oppgaver (${escapeHtml(niva)})</title>
   <style>
-    body{font-family:Segoe UI,Arial,sans-serif;margin:0;background:#f6f8fa;color:#1b1b1b}
-    header{background:#005F73;color:#fff;padding:12px 18px}
-    .wrap{max-width:1100px;margin:0 auto;padding:14px}
-    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
-    .tab-btn{border:1px solid #c9d1d9;background:#fff;padding:8px 12px;border-radius:8px;cursor:pointer}
-    .tab-btn.active{background:#005F73;color:#fff;border-color:#005F73}
-    .layout{display:grid;grid-template-columns:2.1fr 1fr;gap:12px}
+    :root{--primary:#005F73;--secondary:#0A9396;--accent:#E9C46A;--bg:#f4f7fb;--card:#ffffff;--line:#d8e1ea;--ok:#0f8a4b;--no:#c62828;--muted:#425466}
+    *{box-sizing:border-box}
+    body{font-family:Inter,Segoe UI,Arial,sans-serif;margin:0;background:var(--bg);color:#132238}
+    header{background:linear-gradient(90deg,var(--primary),#0a7c84);color:#fff;padding:18px 24px}
+    header h1{margin:0;font-size:30px}
+    .wrap{max-width:1500px;margin:0 auto;padding:16px}
+    .tabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+    .tab-btn{border:1px solid var(--line);background:#fff;padding:12px 18px;border-radius:10px;cursor:pointer;font-size:17px;font-weight:600}
+    .tab-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+    .layout{display:grid;grid-template-columns:3.1fr 1.3fr;gap:14px;align-items:start}
     .pane{display:none}.pane.active{display:block}
-    .text-card{background:#fff;border-radius:10px;padding:12px;border:1px solid #d0d7de;line-height:1.5}
-    .task{background:#fff;border:1px solid #d0d7de;border-radius:10px;padding:10px;margin-top:10px}
-    .instr{color:#495057;margin-top:0}
-    .item{border-top:1px dashed #e5e7eb;padding-top:8px;margin-top:8px}
-    .answer-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px}
-    button{background:#0A9396;color:#fff;border:none;border-radius:6px;padding:6px 9px;cursor:pointer}
-    input{padding:6px 8px;border:1px solid #c9d1d9;border-radius:6px;min-width:220px}
-    .fb{font-weight:700}
-    .ok{color:#12733f}.no{color:#b42318}
-    .side{background:#fff;border:1px solid #d0d7de;border-radius:10px;padding:10px;position:sticky;top:10px;max-height:86vh;overflow:auto}
-    table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #eee;padding:6px;text-align:left;vertical-align:top}
-    .mini{font-size:13px;color:#495057}
-    @media (max-width:960px){.layout{grid-template-columns:1fr}.side{position:static;max-height:none}}
+    .pane h2{font-size:28px;margin:0 0 10px}
+    .text-card{background:var(--card);border-radius:14px;padding:18px;border:1px solid var(--line);line-height:1.65;font-size:20px}
+    .task{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-top:12px}
+    .task h4{font-size:23px;margin:0 0 6px}
+    .instr{color:var(--muted);font-size:17px;margin:0 0 8px}
+    .item{border-top:1px dashed #e8edf2;padding-top:10px;margin-top:10px}
+    .item strong{font-size:18px}
+    .answer-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+    .btn-primary,.btn-muted,.btn-option,.click-word{border:none;border-radius:8px;padding:8px 12px;font-size:16px;cursor:pointer}
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-muted{background:#edf2f7;color:#20334b}
+    .btn-option{background:#eef7f8;color:#114557;border:1px solid #cde3e6}
+    .btn-option:hover{background:#dff0f2}
+    input{padding:8px 10px;border:1px solid #bfcddc;border-radius:8px;min-width:280px;font-size:16px}
+    .fb{font-weight:800;font-size:18px;padding:4px 8px;border-radius:6px}
+    .ok{color:#fff;background:var(--ok)}
+    .no{color:#fff;background:var(--no)}
+    .click-word{background:#f4f7fb;color:#16324a;border:1px solid #d6e0eb;transition:all .15s}
+    .click-word:hover{background:#ffe8b3;transform:translateY(-1px)}
+    .click-word.selected{outline:2px solid #ffb703}
+    .word-bank,.drop-line{display:flex;gap:8px;flex-wrap:wrap;padding:10px;border-radius:10px;min-height:52px}
+    .word-bank{background:#f7fafd;border:1px solid #dce7f1}
+    .drop-line{background:#fff8e8;border:2px dashed #e4c98d;margin-top:8px}
+    .word-chip{background:#fff;border:1px solid #cfdceb;border-radius:8px;padding:7px 10px;cursor:grab;font-size:16px}
+    .word-chip:active{cursor:grabbing}
+    .mini{font-size:15px;color:#4b5d74}
+    .side{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
+    .side h3{font-size:24px;margin:0 0 8px}
+    table{width:100%;border-collapse:collapse;font-size:16px}
+    th,td{border-bottom:1px solid #e8edf2;padding:8px;text-align:left;vertical-align:top}
+    th{font-size:16px;background:#f8fbff}
+    @media (max-width:1200px){.layout{grid-template-columns:1fr}.side{order:-1}}
+    @media (max-width:680px){header h1{font-size:24px}.text-card{font-size:18px}.task h4{font-size:20px}.tab-btn{font-size:15px;padding:10px 12px}}
   </style>
 </head>
 <body>
-  <header><h1>${escapeHtml(yrke)} - Interaktive oppgaver (${escapeHtml(niva)})</h1></header>
+  <header><h1>${escapeHtml(yrke)} - interaktive oppgaver (${escapeHtml(niva)})</h1></header>
   <div class="wrap">
     <div class="tabs">${wizardTabs}</div>
     <div class="layout">
@@ -584,6 +650,7 @@ function buildInteractiveHtml(data, yrke, niva, hjelpesprak) {
     </div>
   </div>
   <script>
+    let draggedId = null;
     document.querySelectorAll('.tab-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
@@ -597,15 +664,54 @@ function buildInteractiveHtml(data, yrke, niva, hjelpesprak) {
       const el = document.getElementById(id + '-fb');
       if (!el) return;
       el.className = 'fb ' + (ok ? 'ok' : 'no');
-      el.textContent = ok ? 'Riktig' : 'Feil';
+      el.textContent = ok ? 'Riktig svar' : 'Feil svar';
     }
     window.checkText = function(id, expected) {
       const inp = document.getElementById(id);
       const got = (inp && inp.value ? inp.value : '').trim().toLowerCase();
       mark(id, got === String(expected).trim().toLowerCase());
     };
-    window.checkChoice = function(id, selected, expected) {
+    window.checkChoice = function(id, selected, expected, btnEl) {
+      if (btnEl) {
+        btnEl.parentElement.querySelectorAll('button').forEach((b) => b.classList.remove('selected'));
+        btnEl.classList.add('selected');
+      }
       mark(id, String(selected).trim().toLowerCase() === String(expected).trim().toLowerCase());
+    };
+    window.checkWordClick = function(id, selected, expected, btnEl) {
+      btnEl.parentElement.querySelectorAll('.click-word').forEach((b) => b.classList.remove('selected'));
+      btnEl.classList.add('selected');
+      mark(id, selected === expected);
+    };
+    window.dragWord = function(ev, id) {
+      draggedId = ev.target.id;
+      ev.dataTransfer.setData('text/plain', ev.target.id);
+      ev.dataTransfer.setData('owner', id);
+    };
+    window.allowDrop = function(ev) { ev.preventDefault(); };
+    window.dropWord = function(ev, id) {
+      ev.preventDefault();
+      const sourceId = ev.dataTransfer.getData('owner');
+      if (sourceId !== id) return;
+      const chipId = ev.dataTransfer.getData('text/plain') || draggedId;
+      const chip = document.getElementById(chipId);
+      const drop = document.getElementById(id + '-drop');
+      if (chip && drop) drop.appendChild(chip);
+    };
+    window.resetOrder = function(id) {
+      const bank = document.getElementById(id + '-bank');
+      const drop = document.getElementById(id + '-drop');
+      if (!bank || !drop) return;
+      const chips = Array.from(drop.querySelectorAll('.word-chip'));
+      chips.forEach((chip) => bank.appendChild(chip));
+      mark(id, false);
+      const fb = document.getElementById(id + '-fb');
+      if (fb) { fb.className = 'fb'; fb.textContent = ''; }
+    };
+    window.checkOrder = function(id, expected) {
+      const drop = document.getElementById(id + '-drop');
+      const got = Array.from(drop.querySelectorAll('.word-chip')).map((c) => c.dataset.value).join(' ').trim().toLowerCase();
+      mark(id, got === String(expected).trim().toLowerCase());
     };
   </script>
 </body>
