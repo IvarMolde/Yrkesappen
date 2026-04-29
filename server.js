@@ -14,6 +14,7 @@ const {
 const {
   buildDocx,
   buildPptx,
+  buildInteractiveHtml,
 } = require('./src/services/document-generation');
 
 const app = express();
@@ -56,6 +57,7 @@ registerGenerateRoute(app, {
   buildGrammatikkPrompt,
   buildDocx,
   buildPptx,
+  buildInteractiveHtml,
 });
 
 app.use(errorHandler);

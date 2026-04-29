@@ -17,6 +17,7 @@ const generateSchema = z.object({
   grammatikkFokus: z.string().trim().max(MAX_TEXT).optional().default('ingen'),
   passord: z.string().trim().max(200).optional().default(''),
   authToken: z.string().trim().max(800).optional().default(''),
+  formater: z.array(z.enum(['docx', 'pptx', 'html'])).min(1).max(3).optional().default(['docx', 'pptx']),
 });
 
 module.exports = {

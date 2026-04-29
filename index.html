@@ -467,8 +467,14 @@
   <!-- Generer-knapp -->
   <div class="card">
     <h3><span class="step">6</span> Generer dokumenter</h3>
+    <label style="margin-bottom:.6rem;">Velg format(er)</label>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:1rem;">
+      <label style="display:flex;align-items:center;gap:.45rem;font-weight:600;"><input id="fmtDocx" type="checkbox" checked /> Word (.docx)</label>
+      <label style="display:flex;align-items:center;gap:.45rem;font-weight:600;"><input id="fmtPptx" type="checkbox" checked /> PowerPoint (.pptx)</label>
+      <label style="display:flex;align-items:center;gap:.45rem;font-weight:600;"><input id="fmtHtml" type="checkbox" /> HTML (interaktiv)</label>
+    </div>
     <p style="font-size:.9rem;color:var(--textMid);margin-bottom:1rem;">
-      Du får ett Word-arbeidshefte (.docx) og én PowerPoint-presentasjon (.pptx) lastet ned direkte.
+      Du får valgte filer lastet ned direkte. HTML åpnes i nettleser og kan brukes på storskjerm.
       Genereringen tar ca. 20–40 sekunder.
     </p>
     <button id="genBtn" onclick="generer()">Generer hefte og presentasjon</button>
@@ -539,6 +545,11 @@
     const sprak = sprakInput.value.trim();
     const plassering = plasseringSelect.value;
     const fokus = document.getElementById('fokusInput').value.trim();
+    const formater = [
+      document.getElementById('fmtDocx').checked ? 'docx' : null,
+      document.getElementById('fmtPptx').checked ? 'pptx' : null,
+      document.getElementById('fmtHtml').checked ? 'html' : null,
+    ].filter(Boolean);
     const grammatikkFokus = valgtGrammatikk === 'egendefinert'
       ? document.getElementById('grammatikkInput').value.trim()
       : valgtGrammatikk; // 'ingen' eller 'tilfeldig'
@@ -547,6 +558,10 @@
     if (!valgtNiva) { visStatus('⚠️ Velg et norsknivå (A1, A2, B1 eller B2).', 'error'); return; }
     if (valgtGrammatikk === 'egendefinert' && !grammatikkFokus) {
       visStatus('⚠️ Skriv inn grammatikkfokus, eller velg «Ingen» eller «Tilfeldig».', 'error');
+      return;
+    }
+    if (formater.length === 0) {
+      visStatus('⚠️ Velg minst ett format (Word, PowerPoint eller HTML).', 'error');
       return;
     }
 
@@ -567,6 +582,7 @@
           fokus: fokus || '',
           grammatikkFokus: grammatikkFokus || 'ingen',
           authToken: sessionStorage.getItem('yrkesappen_token') || '',
+          formater,
         }),
       });
 
@@ -588,34 +604,48 @@
           `«${yrke}» ble korrigert til «${data.yrkeKorrigert}»`;
       }
 
-      // Last ned Word-fil
-      const docxBlob = new Blob(
-        [Uint8Array.from(atob(data.docx), c => c.charCodeAt(0))],
-        { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
-      );
-      const docxUrl = URL.createObjectURL(docxBlob);
-      const a1 = document.createElement('a');
-      a1.href = docxUrl;
-      a1.download = `${data.filnavn}-arbeidshefte-${data.niva}.docx`;
-      document.body.appendChild(a1); a1.click(); a1.remove();
-      URL.revokeObjectURL(docxUrl);
+      if (data.docx) {
+        const docxBlob = new Blob(
+          [Uint8Array.from(atob(data.docx), c => c.charCodeAt(0))],
+          { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
+        );
+        const docxUrl = URL.createObjectURL(docxBlob);
+        const a1 = document.createElement('a');
+        a1.href = docxUrl;
+        a1.download = `${data.filnavn}-arbeidshefte-${data.niva}.docx`;
+        document.body.appendChild(a1); a1.click(); a1.remove();
+        URL.revokeObjectURL(docxUrl);
+        await new Promise(r => setTimeout(r, 300));
+      }
 
-      // Liten pause så nettleseren ikke blokkerer
-      await new Promise(r => setTimeout(r, 600));
+      if (data.pptx) {
+        const pptxBlob = new Blob(
+          [Uint8Array.from(atob(data.pptx), c => c.charCodeAt(0))],
+          { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }
+        );
+        const pptxUrl = URL.createObjectURL(pptxBlob);
+        const a2 = document.createElement('a');
+        a2.href = pptxUrl;
+        a2.download = `${data.filnavn}-presentasjon-${data.niva}.pptx`;
+        document.body.appendChild(a2); a2.click(); a2.remove();
+        URL.revokeObjectURL(pptxUrl);
+        await new Promise(r => setTimeout(r, 300));
+      }
 
-      // Last ned PowerPoint-fil
-      const pptxBlob = new Blob(
-        [Uint8Array.from(atob(data.pptx), c => c.charCodeAt(0))],
-        { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }
-      );
-      const pptxUrl = URL.createObjectURL(pptxBlob);
-      const a2 = document.createElement('a');
-      a2.href = pptxUrl;
-      a2.download = `${data.filnavn}-presentasjon-${data.niva}.pptx`;
-      document.body.appendChild(a2); a2.click(); a2.remove();
-      URL.revokeObjectURL(pptxUrl);
+      if (data.html) {
+        const htmlBlob = new Blob(
+          [Uint8Array.from(atob(data.html), c => c.charCodeAt(0))],
+          { type: 'text/html;charset=utf-8' }
+        );
+        const htmlUrl = URL.createObjectURL(htmlBlob);
+        const a3 = document.createElement('a');
+        a3.href = htmlUrl;
+        a3.download = `${data.filnavn}-oppgaver-${data.niva}.html`;
+        document.body.appendChild(a3); a3.click(); a3.remove();
+        URL.revokeObjectURL(htmlUrl);
+      }
 
-      visStatus(`✅ Ferdig! To filer er lastet ned: arbeidshefte (.docx) og presentasjon (.pptx) for «${yrke}» nivå ${valgtNiva}.`, 'ok');
+      visStatus(`✅ Ferdig! Valgte filer er lastet ned for «${yrke}» nivå ${valgtNiva}.`, 'ok');
 
     } catch (e) {
       visStatus(`❌ Feil: ${e.message}`, 'error');

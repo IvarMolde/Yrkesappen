@@ -20,6 +20,7 @@ function registerGenerateRoute(app, deps) {
     buildGrammatikkPrompt,
     buildDocx,
     buildPptx,
+    buildInteractiveHtml,
   } = deps;
 
   app.post('/api/generer', async (req, res, next) => {
@@ -28,7 +29,7 @@ function registerGenerateRoute(app, deps) {
       if (!parsed.success) {
         return res.status(400).json({ feil: 'Ugyldig input. Sjekk yrke, nivå og valg.' });
       }
-      const { yrke, niva, sprak, plassering, fokus, grammatikkFokus, passord, authToken } = parsed.data;
+      const { yrke, niva, sprak, plassering, fokus, grammatikkFokus, passord, authToken, formater } = parsed.data;
 
       const riktig = process.env.APP_PASSORD;
       const tokenValid = verifyAuthToken(authToken);
@@ -83,15 +84,24 @@ function registerGenerateRoute(app, deps) {
         }
       }
 
-      const [docxBuf, pptxBuf] = await Promise.all([
-        buildDocx(data, sprak, plassering, grammatikkData),
-        buildPptx(data, yrkeNormalisert, niva, sprak, fokus),
-      ]);
+      const wantsDocx = formater.includes('docx');
+      const wantsPptx = formater.includes('pptx');
+      const wantsHtml = formater.includes('html');
+      const tasks = [];
+      if (wantsDocx) tasks.push(buildDocx(data, sprak, plassering, grammatikkData));
+      if (wantsPptx) tasks.push(buildPptx(data, yrkeNormalisert, niva, sprak, fokus));
+      if (wantsHtml) tasks.push(buildInteractiveHtml(data, yrkeNormalisert, niva, sprak));
+      const built = await Promise.all(tasks);
+      let idx = 0;
+      const docxBuf = wantsDocx ? built[idx++] : null;
+      const pptxBuf = wantsPptx ? built[idx++] : null;
+      const htmlBuf = wantsHtml ? built[idx++] : null;
 
       const safeName = yrkeNormalisert.replace(/[^a-zA-ZæøåÆØÅ0-9\-]/g, '_');
       res.json({
-        docx: docxBuf.toString('base64'),
-        pptx: pptxBuf.toString('base64'),
+        docx: docxBuf ? docxBuf.toString('base64') : null,
+        pptx: pptxBuf ? pptxBuf.toString('base64') : null,
+        html: htmlBuf ? htmlBuf.toString('base64') : null,
         filnavn: safeName,
         niva,
         yrkeKorrigert: yrkeKorrigert ? yrkeNormalisert : null,
