@@ -1,5 +1,6 @@
 'use strict';
 const { generateSchema } = require('../schemas/api');
+const { verifyAuthToken } = require('../services/auth-token');
 
 function rettForbokstav(tekst, y) {
   if (!tekst || !y) return tekst;
@@ -27,10 +28,13 @@ function registerGenerateRoute(app, deps) {
       if (!parsed.success) {
         return res.status(400).json({ feil: 'Ugyldig input. Sjekk yrke, nivå og valg.' });
       }
-      const { yrke, niva, sprak, plassering, fokus, grammatikkFokus, passord } = parsed.data;
+      const { yrke, niva, sprak, plassering, fokus, grammatikkFokus, passord, authToken } = parsed.data;
 
       const riktig = process.env.APP_PASSORD;
-      if (riktig && passord !== riktig) return res.status(401).json({ feil: 'Ikke autorisert. Logg inn på nytt.' });
+      const tokenValid = verifyAuthToken(authToken);
+      if (riktig && !tokenValid && passord !== riktig) {
+        return res.status(401).json({ feil: 'Ikke autorisert. Logg inn på nytt.' });
+      }
 
       // Normalisér og korriger yrkenavnet (stavefeil + liten forbokstav)
       const { yrke: yrkeNormalisert, korrigert: yrkeKorrigert } = await normaliserYrke(yrke);

@@ -459,7 +459,7 @@
         onblur="this.style.borderColor='var(--bgGray)'"
       />
       <div class="info-box" style="margin-top:.8rem;">
-        <strong>Tips:</strong> Skriv ett grammatisk tema, f.eks. <em>«preteritum»</em>, <em>«V2-regelen og inversjon»</em> eller <em>«adjektivbøyning i bestem og ubestem form»</em>. Heftet får da en grammatikkforklaring + 5 oppgaver (a–e) tilpasset nivå ${valgtNiva}.
+        <strong>Tips:</strong> Skriv ett grammatisk tema, f.eks. <em>«preteritum»</em>, <em>«V2-regelen og inversjon»</em> eller <em>«adjektivbøyning i bestem og ubestem form»</em>. Heftet får da en grammatikkforklaring + 5 oppgaver (a–e) tilpasset valgt nivå.
       </div>
     </div>
   </div>
@@ -566,7 +566,7 @@
           plassering: sprak ? plassering : 'ingen',
           fokus: fokus || '',
           grammatikkFokus: grammatikkFokus || 'ingen',
-          passord: sessionStorage.getItem('yrkesappen_pw') || '',
+          authToken: sessionStorage.getItem('yrkesappen_token') || '',
         }),
       });
 
@@ -627,6 +627,7 @@
 
   // ── Autentisering ──────────────────────────────────────────
   const SESSION_KEY = 'yrkesappen_auth';
+  const SESSION_TOKEN_KEY = 'yrkesappen_token';
 
   function sjekkInnlogging() {
     if (sessionStorage.getItem(SESSION_KEY) === '1') {
@@ -656,7 +657,9 @@
       const data = await resp.json();
       if (data.ok) {
         sessionStorage.setItem(SESSION_KEY, '1');
-        sessionStorage.setItem('yrkesappen_pw', passord);
+        if (data.authToken) {
+          sessionStorage.setItem(SESSION_TOKEN_KEY, data.authToken);
+        }
         document.getElementById('loginOverlay').classList.add('skjult');
         document.getElementById('passordInput').value = '';
       } else {
@@ -675,7 +678,7 @@
 
   function loggUt() {
     sessionStorage.removeItem(SESSION_KEY);
-    sessionStorage.removeItem('yrkesappen_pw');
+    sessionStorage.removeItem(SESSION_TOKEN_KEY);
     sjekkInnlogging();
   }
 

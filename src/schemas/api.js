@@ -16,6 +16,7 @@ const generateSchema = z.object({
   fokus: z.string().trim().max(MAX_TEXT).optional().default(''),
   grammatikkFokus: z.string().trim().max(MAX_TEXT).optional().default('ingen'),
   passord: z.string().trim().max(200).optional().default(''),
+  authToken: z.string().trim().max(800).optional().default(''),
 });
 
 module.exports = {
