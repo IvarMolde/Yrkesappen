@@ -201,6 +201,35 @@ async function buildDocx(data, hjelpesprak, plassering, grammatikkData) {
       new Paragraph({ spacing: { before: 0, after: 0 }, shading: { fill: C.primary, type: ShadingType.CLEAR }, children: [new TextRun({ text: '  📘 Grammatikkforklaring  ', bold: true, size: 24, color: C.white, font: 'Calibri' })] }),
       new Paragraph({ spacing: { before: 0, after: 240 }, shading: { fill: 'E6F4F6', type: ShadingType.CLEAR }, border: { left: { style: BorderStyle.SINGLE, size: 12, color: C.secondary, space: 8 } }, children: [new TextRun({ text: grammatikkData.forklaring, size: 24, font: 'Calibri', color: C.textDark })] })
     );
+
+    // Pedagogisk hurtigskjema: gjør grammatikkdelen mer visuell og lettere å bruke i undervisning.
+    grammatikkBlock.push(
+      new Paragraph({
+        spacing: { before: 40, after: 60 },
+        children: [new TextRun({ text: 'Hurtigskjema', bold: true, size: 24, color: C.primary, font: 'Calibri' })],
+      }),
+      new Table({
+        width: { size: 9000, type: WidthType.DXA },
+        columnWidths: [2200, 3400, 3400],
+        rows: [
+          new TableRow({
+            children: [
+              new TableCell({ borders: allBorders, shading: { fill: C.primary, type: ShadingType.CLEAR }, children: [new Paragraph({ children: [new TextRun({ text: 'Form', bold: true, color: C.white, size: 22, font: 'Calibri' })] })] }),
+              new TableCell({ borders: allBorders, shading: { fill: C.primary, type: ShadingType.CLEAR }, children: [new Paragraph({ children: [new TextRun({ text: 'Eksempel', bold: true, color: C.white, size: 22, font: 'Calibri' })] })] }),
+              new TableCell({ borders: allBorders, shading: { fill: C.primary, type: ShadingType.CLEAR }, children: [new Paragraph({ children: [new TextRun({ text: 'Egen setning', bold: true, color: C.white, size: 22, font: 'Calibri' })] })] }),
+            ],
+          }),
+          ...['Regel 1', 'Regel 2', 'Regel 3'].map((label, i) => new TableRow({
+            children: [
+              new TableCell({ borders: allBorders, shading: { fill: i % 2 === 0 ? C.white : C.bgGray, type: ShadingType.CLEAR }, children: [new Paragraph({ children: [new TextRun({ text: label, size: 22, font: 'Calibri', bold: true, color: C.secondary })] })] }),
+              new TableCell({ borders: allBorders, shading: { fill: i % 2 === 0 ? C.white : C.bgGray, type: ShadingType.CLEAR }, children: [new Paragraph({ children: [new TextRun({ text: '__________________________', size: 22, color: C.textMid, font: 'Calibri' })] })] }),
+              new TableCell({ borders: allBorders, shading: { fill: i % 2 === 0 ? C.white : C.bgGray, type: ShadingType.CLEAR }, children: [new Paragraph({ children: [new TextRun({ text: '__________________________', size: 22, color: C.textMid, font: 'Calibri' })] })] }),
+            ],
+          })),
+        ],
+      }),
+      new Paragraph({ spacing: { after: 180 }, children: [] })
+    );
   }
 
   const doc = new Document({
@@ -278,7 +307,7 @@ async function buildPptx(data, yrke, niva, hjelpesprak) {
     s.addText('Arbeidsoppgaver er konkrete ting du gjør i løpet av arbeidsdagen.', {
       x: 6.85, y: 1.9, w: 2.55, h: 1.4, fontSize: 12, color: C.textDark, fontFace: 'Calibri', valign: 'top', fit: 'shrink',
     });
-    s.addText('Sporsmal til klassen:\nHvilke av oppgavene virker mest viktige?', {
+    s.addText('Spørsmål til klassen:\nHvilke av oppgavene virker mest viktige?', {
       x: 6.85, y: 3.5, w: 2.55, h: 1.2, fontSize: 11, color: C.textMid, fontFace: 'Calibri', fit: 'shrink',
     });
   }
@@ -432,7 +461,7 @@ function buildInteractiveHtml(data, yrke, niva, hjelpesprak) {
     ['trygg', 'sikker'], ['rolig', 'stille'], ['viktig', 'sentral'], ['hjelpe', 'bistå'], ['starte', 'begynne'],
   ];
 
-  const genericTaskPool = ['fill_missing', 'true_false', 'synonym_click', 'antonym_choice', 'choose_statement', 'click_word_meaning'];
+  const genericTaskPool = ['fill_missing', 'true_false', 'synonym_click', 'antonym_choice', 'choose_statement'];
   const hasSentenceOrder = niva !== 'A1';
 
   function mutateFalseStatement(sentence, idx) {
@@ -513,21 +542,10 @@ function buildInteractiveHtml(data, yrke, niva, hjelpesprak) {
       return { type, title: 'Finn antonym', instruction: 'Velg ordet som betyr det motsatte av ordet fra teksten.', items };
     }
 
-    if (type === 'click_word_meaning') {
-      const items = seededPick(fallbackSentences, textIdx + 61, 5).map((sentence, i) => {
-        const ws = words(sentence).filter((w) => w.length > 3);
-        const answer = ws[(i + 1) % ws.length] || ws[0] || 'ord';
-        const clueFromList = ordliste.find((o) => normalizeWord(o.norsk).includes(normalizeWord(answer)));
-        const clue = clueFromList ? clueFromList.forklaring : `Klikk ordet i setningen som betyr: ${answer}`;
-        return { letter: 'abcde'[i], sentence, clue, answer };
-      });
-      return { type, title: 'Klikk ordet som passer betydningen', instruction: 'Hold over ord for markering, klikk deretter riktig ord.', items };
-    }
-
     const items = seededPick(fallbackSentences, textIdx + 71, 5).map((sentence, i) => {
       const correct = sentence;
-      const optionB = mutateFalseStatement(sentence, i + 11);
-      const optionC = mutateFalseStatement(sentence, i + 19);
+      const optionB = `Teksten sier at ${yrke} vanligvis jobber med helt andre oppgaver enn dette.`;
+      const optionC = `I teksten står det at denne situasjonen ikke skjer i arbeidsdagen.`;
       const incorrect = [optionB, optionC];
       const correctIndex = (textIdx + i + 2) % 3;
       const options = [...incorrect];
@@ -564,11 +582,6 @@ function buildInteractiveHtml(data, yrke, niva, hjelpesprak) {
       if (task.type === 'true_false') {
         return `<div class="item"><div><strong>${item.letter})</strong> ${escapeHtml(item.statement)}</div><div class="answer-row"><button class="btn-primary" onclick="checkChoice('${id}','sant','${item.answer}')">Sant</button><button class="btn-muted" onclick="checkChoice('${id}','usant','${item.answer}')">Usant</button><span id="${id}-fb" class="fb"></span></div></div>`;
       }
-      if (task.type === 'click_word_meaning') {
-        const wordButtons = words(item.sentence).slice(0, 12).map((w) => `<button class="click-word" onclick="checkWordClick('${id}','${escapeHtml(normalizeWord(w))}','${escapeHtml(normalizeWord(item.answer))}', this)">${escapeHtml(w)}</button>`).join('');
-        return `<div class="item"><div><strong>${item.letter})</strong> ${escapeHtml(item.clue)}</div><p class="mini">${escapeHtml(item.sentence)}</p><div class="answer-row">${wordButtons}<span id="${id}-fb" class="fb"></span></div></div>`;
-      }
-
       const prompt = task.type === 'antonym_choice'
         ? `Velg antonym til ordet: ${escapeHtml(item.word)}`
         : (task.type === 'synonym_click' ? `Klikk synonym til ordet: ${escapeHtml(item.base)}` : 'Velg riktig alternativ:');
@@ -615,7 +628,7 @@ function buildInteractiveHtml(data, yrke, niva, hjelpesprak) {
     .item{border-top:1px dashed #e8edf2;padding-top:10px;margin-top:10px}
     .item strong{font-size:18px}
     .answer-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
-    .btn-primary,.btn-muted,.btn-option,.click-word{border:none;border-radius:8px;padding:8px 12px;font-size:16px;cursor:pointer}
+    .btn-primary,.btn-muted,.btn-option{border:none;border-radius:8px;padding:8px 12px;font-size:16px;cursor:pointer}
     .btn-primary{background:var(--primary);color:#fff}
     .btn-muted{background:#edf2f7;color:#20334b}
     .btn-option{background:#eef7f8;color:#114557;border:1px solid #cde3e6}
@@ -624,9 +637,6 @@ function buildInteractiveHtml(data, yrke, niva, hjelpesprak) {
     .fb{font-weight:800;font-size:20px;padding:4px 10px;border-radius:6px}
     .ok{color:#fff;background:var(--ok)}
     .no{color:#fff;background:var(--no)}
-    .click-word{background:#f4f7fb;color:#16324a;border:1px solid #d6e0eb;transition:all .15s}
-    .click-word:hover{background:#ffe8b3;transform:translateY(-1px)}
-    .click-word.selected{outline:2px solid #ffb703}
     .word-bank,.drop-line{display:flex;gap:8px;flex-wrap:wrap;padding:10px;border-radius:10px;min-height:52px}
     .word-bank{background:#f7fafd;border:1px solid #dce7f1}
     .drop-line{background:#fff8e8;border:2px dashed #e4c98d;margin-top:8px}
@@ -713,11 +723,6 @@ function buildInteractiveHtml(data, yrke, niva, hjelpesprak) {
         btnEl.classList.add('selected');
       }
       mark(id, String(selected).trim().toLowerCase() === String(expected).trim().toLowerCase());
-    };
-    window.checkWordClick = function(id, selected, expected, btnEl) {
-      btnEl.parentElement.querySelectorAll('.click-word').forEach((b) => b.classList.remove('selected'));
-      btnEl.classList.add('selected');
-      mark(id, selected === expected);
     };
     window.dragWord = function(ev, id) {
       draggedId = ev.target.id;
