@@ -197,48 +197,36 @@ async function buildDocx(data, hjelpesprak, plassering, grammatikkData) {
   const grammatikkBlock = [];
   function cleanPedagogicText(text) {
     return String(text || '')
+      .replace(/```[\s\S]*?```/g, ' ')
+      .replace(/`/g, '')
       .replace(/\*\*/g, '')
-      .replace(/^[-*]\s+/gm, '')
+      .replace(/\*/g, '')
+      .replace(/^[-•*]\s+/gm, '')
+      .replace(/\s+([,.;:!?])/g, '$1')
+      .replace(/\(\s+/g, '(')
+      .replace(/\s+\)/g, ')')
       .replace(/\s{2,}/g, ' ')
       .trim();
   }
+  function splitPedagogicParagraphs(text) {
+    return cleanPedagogicText(text)
+      .split(/\n{2,}|(?<=\.)\s+(?=[A-ZÆØÅ])/g)
+      .map((p) => p.trim())
+      .filter(Boolean);
+  }
   if (grammatikkData && Array.isArray(grammatikkData.oppgaver) && grammatikkData.oppgaver.length) {
+    const forklaringAvsnitt = splitPedagogicParagraphs(grammatikkData.forklaring);
     grammatikkBlock.push(...sectionHeader(`Grammatikk: ${grammatikkData.tema}`));
     grammatikkBlock.push(
       new Paragraph({ spacing: { before: 0, after: 0 }, shading: { fill: C.primary, type: ShadingType.CLEAR }, children: [new TextRun({ text: '  📘 Grammatikkforklaring  ', bold: true, size: 24, color: C.white, font: 'Calibri' })] }),
-      new Paragraph({
-        spacing: { before: 0, after: 120 },
+      ...forklaringAvsnitt.map((paragraph, idx) => new Paragraph({
+        spacing: { before: idx === 0 ? 0 : 60, after: idx === forklaringAvsnitt.length - 1 ? 120 : 40 },
         shading: { fill: 'E6F4F6', type: ShadingType.CLEAR },
         border: { left: { style: BorderStyle.SINGLE, size: 12, color: C.secondary, space: 8 } },
-        children: [new TextRun({ text: cleanPedagogicText(grammatikkData.forklaring), size: 24, font: 'Calibri', color: C.textDark })],
-      })
+        children: [new TextRun({ text: paragraph, size: 24, font: 'Calibri', color: C.textDark })],
+      }))
     );
-
     grammatikkBlock.push(
-      new Paragraph({
-        spacing: { before: 40, after: 60 },
-        children: [new TextRun({ text: 'Hurtigskjema', bold: true, size: 24, color: C.primary, font: 'Calibri' })],
-      }),
-      new Table({
-        width: { size: 9000, type: WidthType.DXA },
-        columnWidths: [2200, 3400, 3400],
-        rows: [
-          new TableRow({
-            children: [
-              new TableCell({ borders: allBorders, shading: { fill: C.primary, type: ShadingType.CLEAR }, children: [new Paragraph({ children: [new TextRun({ text: 'Form', bold: true, color: C.white, size: 22, font: 'Calibri' })] })] }),
-              new TableCell({ borders: allBorders, shading: { fill: C.primary, type: ShadingType.CLEAR }, children: [new Paragraph({ children: [new TextRun({ text: 'Eksempel', bold: true, color: C.white, size: 22, font: 'Calibri' })] })] }),
-              new TableCell({ borders: allBorders, shading: { fill: C.primary, type: ShadingType.CLEAR }, children: [new Paragraph({ children: [new TextRun({ text: 'Egen setning', bold: true, color: C.white, size: 22, font: 'Calibri' })] })] }),
-            ],
-          }),
-          ...['Regel 1', 'Regel 2', 'Regel 3'].map((label, i) => new TableRow({
-            children: [
-              new TableCell({ borders: allBorders, shading: { fill: i % 2 === 0 ? C.white : C.bgGray, type: ShadingType.CLEAR }, children: [new Paragraph({ children: [new TextRun({ text: label, size: 22, font: 'Calibri', bold: true, color: C.secondary })] })] }),
-              new TableCell({ borders: allBorders, shading: { fill: i % 2 === 0 ? C.white : C.bgGray, type: ShadingType.CLEAR }, children: [new Paragraph({ children: [new TextRun({ text: '__________________________', size: 22, color: C.textMid, font: 'Calibri' })] })] }),
-              new TableCell({ borders: allBorders, shading: { fill: i % 2 === 0 ? C.white : C.bgGray, type: ShadingType.CLEAR }, children: [new Paragraph({ children: [new TextRun({ text: '__________________________', size: 22, color: C.textMid, font: 'Calibri' })] })] }),
-            ],
-          })),
-        ],
-      }),
       new Paragraph({ spacing: { after: 120 }, children: [] }),
       new Paragraph({
         spacing: { before: 20, after: 80 },
@@ -246,12 +234,13 @@ async function buildDocx(data, hjelpesprak, plassering, grammatikkData) {
       })
     );
 
-    grammatikkData.oppgaver.forEach((oppg) => {
+    grammatikkData.oppgaver.forEach((oppg, oppgIndex) => {
+      const oppgaveNummer = Number.isInteger(oppg.nummer) ? oppg.nummer : (oppgIndex + 1);
       grammatikkBlock.push(
         new Paragraph({
           spacing: { before: 60, after: 30 },
           shading: { fill: C.bgGray, type: ShadingType.CLEAR },
-          children: [new TextRun({ text: `Oppgave ${oppg.nummer}: ${cleanPedagogicText(oppg.tittel)}`, bold: true, size: 22, color: C.textDark, font: 'Calibri' })],
+          children: [new TextRun({ text: `Oppgave ${oppgaveNummer}: ${cleanPedagogicText(oppg.tittel)}`, bold: true, size: 22, color: C.textDark, font: 'Calibri' })],
         }),
         new Paragraph({
           spacing: { after: 40 },
