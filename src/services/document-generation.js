@@ -491,7 +491,9 @@ function buildInteractiveHtml(data, yrke, niva, hjelpesprak) {
       const items = pairs.map((pair, i) => {
         const [base, synonym] = pair;
         const distractors = seededPick(synonymPairs.map((p) => p[1]).filter((w) => w !== synonym), textIdx + 230 + i, 2);
-        const options = seededShuffle([synonym, ...distractors], textIdx + 330 + i);
+        const correctIndex = (textIdx + i) % 3;
+        const options = [...distractors];
+        options.splice(correctIndex, 0, synonym);
         return { letter: 'abcde'[i], base, options, answer: synonym };
       });
       return { type, title: 'Klikk på synonym', instruction: 'Klikk ordet som betyr omtrent det samme.', items };
@@ -503,7 +505,9 @@ function buildInteractiveHtml(data, yrke, niva, hjelpesprak) {
         const [a, b] = pair;
         const source = textWords.find((tw) => tw === a) || a;
         const distractors = seededPick(antonymPairs.map((p) => p[1]).filter((w) => w !== b), textIdx + 430 + i, 2);
-        const options = seededShuffle([b, ...distractors], textIdx + 530 + i);
+        const correctIndex = (textIdx + i + 1) % 3;
+        const options = [...distractors];
+        options.splice(correctIndex, 0, b);
         return { letter: 'abcde'[i], word: source, options, answer: b };
       });
       return { type, title: 'Finn antonym', instruction: 'Velg ordet som betyr det motsatte av ordet fra teksten.', items };
@@ -524,7 +528,10 @@ function buildInteractiveHtml(data, yrke, niva, hjelpesprak) {
       const correct = sentence;
       const optionB = mutateFalseStatement(sentence, i + 11);
       const optionC = mutateFalseStatement(sentence, i + 19);
-      const options = seededShuffle([correct, optionB, optionC], textIdx + 700 + i);
+      const incorrect = [optionB, optionC];
+      const correctIndex = (textIdx + i + 2) % 3;
+      const options = [...incorrect];
+      options.splice(correctIndex, 0, correct);
       return { letter: 'abcde'[i], options, answer: correct };
     });
     return { type: 'choose_statement', title: 'Finn riktig påstand', instruction: 'Velg hvilken påstand som stemmer med teksten.', items };
@@ -566,7 +573,8 @@ function buildInteractiveHtml(data, yrke, niva, hjelpesprak) {
         ? `Velg antonym til ordet: ${escapeHtml(item.word)}`
         : (task.type === 'synonym_click' ? `Klikk synonym til ordet: ${escapeHtml(item.base)}` : 'Velg riktig alternativ:');
       const opts = (item.options || []).map((op) => `<button class="btn-option" onclick="checkChoice('${id}','${escapeHtml(op)}','${escapeHtml(item.answer)}', this)">${escapeHtml(op)}</button>`).join('');
-      return `<div class="item"><div><strong>${item.letter})</strong> ${prompt}</div><div class="answer-row">${opts}<span id="${id}-fb" class="fb"></span></div></div>`;
+      const stackClass = task.type === 'choose_statement' ? 'answer-row option-stack' : 'answer-row';
+      return `<div class="item"><div><strong>${item.letter})</strong> ${prompt}</div><div class="${stackClass}">${opts}<span id="${id}-fb" class="fb"></span></div></div>`;
     }).join('');
     return `<section class="task"><h4>${escapeHtml(task.title)}</h4><p class="instr">${escapeHtml(task.instruction)}</p>${rows}</section>`;
   }
@@ -613,7 +621,7 @@ function buildInteractiveHtml(data, yrke, niva, hjelpesprak) {
     .btn-option{background:#eef7f8;color:#114557;border:1px solid #cde3e6}
     .btn-option:hover{background:#dff0f2}
     input{padding:8px 10px;border:1px solid #bfcddc;border-radius:8px;min-width:280px;font-size:16px}
-    .fb{font-weight:800;font-size:18px;padding:4px 8px;border-radius:6px}
+    .fb{font-weight:800;font-size:20px;padding:4px 10px;border-radius:6px}
     .ok{color:#fff;background:var(--ok)}
     .no{color:#fff;background:var(--no)}
     .click-word{background:#f4f7fb;color:#16324a;border:1px solid #d6e0eb;transition:all .15s}
@@ -630,12 +638,23 @@ function buildInteractiveHtml(data, yrke, niva, hjelpesprak) {
     table{width:100%;border-collapse:collapse;font-size:16px}
     th,td{border-bottom:1px solid #e8edf2;padding:8px;text-align:left;vertical-align:top}
     th{font-size:16px;background:#f8fbff}
+    .option-stack{flex-direction:column;align-items:flex-start}
+    .progress-wrap{margin-top:10px;max-width:860px}
+    .progress-meta{display:flex;justify-content:space-between;font-size:16px;font-weight:700;margin-bottom:5px}
+    .bar{width:100%;height:12px;background:rgba(255,255,255,.35);border-radius:999px;overflow:hidden}
+    .bar-fill{height:100%;width:0%;background:#E9C46A;transition:width .2s}
     @media (max-width:1200px){.layout{grid-template-columns:1fr}.side{order:-1}}
     @media (max-width:680px){header h1{font-size:24px}.text-card{font-size:18px}.task h4{font-size:20px}.tab-btn{font-size:15px;padding:10px 12px}}
   </style>
 </head>
 <body>
-  <header><h1>${escapeHtml(yrke)} - interaktive oppgaver (${escapeHtml(niva)})</h1></header>
+  <header>
+    <h1>${escapeHtml(yrke)} - interaktive oppgaver (${escapeHtml(niva)})</h1>
+    <div class="progress-wrap">
+      <div class="progress-meta"><span id="progressText">0 / 0 sjekket</span><span id="scoreText">Poeng: 0%</span></div>
+      <div class="bar"><div id="progressBar" class="bar-fill"></div></div>
+    </div>
+  </header>
   <div class="wrap">
     <div class="tabs">${wizardTabs}</div>
     <div class="layout">
@@ -651,6 +670,7 @@ function buildInteractiveHtml(data, yrke, niva, hjelpesprak) {
   </div>
   <script>
     let draggedId = null;
+    const scoreState = {};
     document.querySelectorAll('.tab-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
@@ -665,6 +685,22 @@ function buildInteractiveHtml(data, yrke, niva, hjelpesprak) {
       if (!el) return;
       el.className = 'fb ' + (ok ? 'ok' : 'no');
       el.textContent = ok ? 'Riktig svar' : 'Feil svar';
+      scoreState[id] = ok;
+      updateScore();
+    }
+    function updateScore() {
+      const keys = Object.keys(scoreState);
+      const checked = keys.length;
+      const correct = keys.filter((k) => scoreState[k]).length;
+      const total = document.querySelectorAll('.item').length;
+      const pct = checked === 0 ? 0 : Math.round((correct / checked) * 100);
+      const progressPct = total === 0 ? 0 : Math.round((checked / total) * 100);
+      const pText = document.getElementById('progressText');
+      const sText = document.getElementById('scoreText');
+      const pBar = document.getElementById('progressBar');
+      if (pText) pText.textContent = checked + ' / ' + total + ' sjekket';
+      if (sText) sText.textContent = 'Poeng: ' + pct + '%';
+      if (pBar) pBar.style.width = progressPct + '%';
     }
     window.checkText = function(id, expected) {
       const inp = document.getElementById(id);
@@ -704,9 +740,10 @@ function buildInteractiveHtml(data, yrke, niva, hjelpesprak) {
       if (!bank || !drop) return;
       const chips = Array.from(drop.querySelectorAll('.word-chip'));
       chips.forEach((chip) => bank.appendChild(chip));
-      mark(id, false);
       const fb = document.getElementById(id + '-fb');
       if (fb) { fb.className = 'fb'; fb.textContent = ''; }
+      delete scoreState[id];
+      updateScore();
     };
     window.checkOrder = function(id, expected) {
       const drop = document.getElementById(id + '-drop');
